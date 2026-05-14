@@ -1,0 +1,54 @@
+@page
+@model MeetingFlow.Monolith.Pages.Speakers.DetailsModel
+@{
+    ViewData["Title"] = Model.Speaker?.FullName ?? "Speaker Profile";
+}
+
+@* Educational baseline:
+   This page uses the full Speaker entity directly, including sensitive fields like Email, Phone, InternalNotes.
+   In production, public-facing pages should never expose internal fields. *@
+
+@if (Model.Speaker is null)
+{
+    <h1>Speaker Not Found</h1>
+}
+else
+{
+    var speaker = Model.Speaker;
+    <h1>@speaker.FullName</h1>
+    <p>@speaker.Bio</p>
+
+    <h2>Contact</h2>
+    <table>
+        <tr><th>Email</th><td>@speaker.Email</td></tr>
+        <tr><th>Phone</th><td>@speaker.Phone</td></tr>
+        <tr><th>Company</th><td>@speaker.Company</td></tr>
+    </table>
+
+    @* Educational baseline:
+       InternalNotes should never be shown on a public-facing page.
+       This is intentionally displayed to demonstrate the risk of using entities directly. *@
+    @if (!string.IsNullOrEmpty(speaker.InternalNotes))
+    {
+        <h2>Internal Notes</h2>
+        <p class="internal-field">@speaker.InternalNotes</p>
+    }
+
+    <h2>Sessions</h2>
+    @if (speaker.Sessions.Any())
+    {
+        <ul class="session-list">
+            @foreach (var session in speaker.Sessions.OrderBy(s => s.StartsAt))
+            {
+                <li>
+                    <strong>@session.Title</strong><br />
+                    <small>@session.RoomName &mdash; <a href="/Meetings/Details?id=@session.MeetingId">View Meeting</a></small>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No sessions assigned.</p>
+    }
+}

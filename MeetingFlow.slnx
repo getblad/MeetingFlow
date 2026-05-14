@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/MeetingFlow.ClientServer/">
+    <Project Path="MeetingFlow.ClientServer/MeetingFlow.Api/MeetingFlow.Api.csproj" />
+  </Folder>
+  <Project Path="MeetingFlow.Monolith/MeetingFlow.Monolith.csproj" />
+</Solution>

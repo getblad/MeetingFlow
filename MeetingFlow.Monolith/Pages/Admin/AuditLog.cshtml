@@ -1,0 +1,36 @@
+@page
+@model MeetingFlow.Monolith.Pages.Admin.AuditLogModel
+@{
+    ViewData["Title"] = "Admin: Audit Log";
+}
+
+@* Educational baseline:
+   This page uses AuditLogEntry entities directly, including TechnicalDetails.
+   TechnicalDetails may contain SQL statements, IP addresses, and other sensitive data.
+   In production, consider filtering sensitive fields or using an AuditLogViewModel. *@
+
+<h1>Audit Log</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>Entity Type</th>
+            <th>Action</th>
+            <th>Actor</th>
+            <th>Technical Details</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var entry in Model.AuditLogEntries)
+        {
+            <tr>
+                <td>@entry.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                <td>@entry.EntityType</td>
+                <td>@entry.Action</td>
+                <td>@entry.ActorName</td>
+                <td class="internal-field" style="max-width:400px; word-break:break-all;">@entry.TechnicalDetails</td>
+            </tr>
+        }
+    </tbody>
+</table>

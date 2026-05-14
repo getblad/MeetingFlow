@@ -1,0 +1,43 @@
+@page
+@model MeetingFlow.Monolith.Pages.Admin.MeetingsModel
+@{
+    ViewData["Title"] = "Admin: Meetings";
+}
+
+@* Educational baseline:
+   This page uses EF Core Meeting entities directly, including admin-only and internal fields.
+   In production, prefer an AdminMeetingRowViewModel that controls which fields are exposed. *@
+
+<h1>Admin: Meetings</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Venue</th>
+            <th>Registrations</th>
+            <th>Created</th>
+            <th>Internal Notes</th>
+            <th>Admin Code</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var ev in Model.Meetings)
+        {
+            <tr>
+                <td><a href="/Meetings/Details?id=@ev.Id">@ev.Title</a></td>
+                <td>
+                    <span class="badge @(ev.Status == "Published" ? "badge-published" : ev.Status == "Draft" ? "badge-draft" : "badge-cancelled")">
+                        @ev.Status
+                    </span>
+                </td>
+                <td>@ev.Venue?.Name</td>
+                <td>@ev.Registrations.Count</td>
+                <td>@ev.CreatedAt.ToString("yyyy-MM-dd")</td>
+                <td class="internal-field">@ev.InternalNotes</td>
+                <td class="internal-field">@ev.AdminOnlyCode</td>
+            </tr>
+        }
+    </tbody>
+</table>

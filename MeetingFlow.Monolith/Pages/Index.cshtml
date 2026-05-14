@@ -1,0 +1,34 @@
+@page
+@model MeetingFlow.Monolith.Pages.IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<h1>Welcome to MeetingFlow</h1>
+<p>MeetingFlow is a demo meeting/conference management platform.</p>
+
+<div class="warning-box">
+    <strong>Educational Baseline:</strong> This application intentionally uses EF Core entity models
+    directly from the database all the way to the UI. This is <strong>not</strong> recommended production
+    architecture. Students should refactor this to use proper DTOs, ViewModels, and request/response models.
+</div>
+
+<h2>Quick Links</h2>
+<div class="card-grid">
+    <div class="card">
+        <h3><a href="/Meetings">Browse Meetings</a></h3>
+        <p>View all upcoming meetings and conferences.</p>
+    </div>
+    <div class="card">
+        <h3><a href="/Dashboard">Dashboard</a></h3>
+        <p>View analytics and statistics.</p>
+    </div>
+    <div class="card">
+        <h3><a href="/Admin/Meetings">Admin Panel</a></h3>
+        <p>Manage meetings (includes internal/admin fields).</p>
+    </div>
+    <div class="card">
+        <h3><a href="/Registrations/Create">Register</a></h3>
+        <p>Register for an meeting.</p>
+    </div>
+</div>

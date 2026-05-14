@@ -1,0 +1,28 @@
+@page
+@model MeetingFlow.Monolith.Pages.Meetings.IndexModel
+@{
+    ViewData["Title"] = "Meetings";
+}
+
+@* Educational baseline:
+   This page uses EF Core Meeting entities directly.
+   Only a few fields are displayed, but the full entity (including InternalNotes, AdminOnlyCode) is loaded.
+   In production, prefer a page-specific view model or DTO. *@
+
+<h1>Meetings</h1>
+
+<div class="card-grid">
+    @foreach (var ev in Model.Meetings)
+    {
+        <div class="card">
+            <h3><a href="/Meetings/Details?id=@ev.Id">@ev.Title</a></h3>
+            <p>@ev.Description[..Math.Min(ev.Description.Length, 120)]...</p>
+            <p class="meta">
+                <span class="badge @(ev.Status == "Published" ? "badge-published" : ev.Status == "Draft" ? "badge-draft" : "badge-cancelled")">
+                    @ev.Status
+                </span>
+            </p>
+            <p class="meta">@ev.StartsAt.ToString("MMM dd, yyyy") &mdash; @ev.Venue?.Name, @ev.Venue?.City</p>
+        </div>
+    }
+</div>

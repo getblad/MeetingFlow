@@ -1,0 +1,50 @@
+@page
+@model MeetingFlow.Monolith.Pages.DashboardModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+@* Educational baseline:
+   This page uses EF Core entities directly and anonymous aggregation objects.
+   In production, prefer a DashboardViewModel with pre-computed properties. *@
+
+<h1>Dashboard</h1>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="number">@Model.TotalMeetings</div>
+        <div class="label">Total Meetings</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">@Model.TotalRegistrations</div>
+        <div class="label">Total Registrations</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">@Model.AverageFeedbackRating.ToString("F1")</div>
+        <div class="label">Avg. Feedback Rating</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">@Model.TotalSpeakers</div>
+        <div class="label">Speakers</div>
+    </div>
+</div>
+
+<h2>Upcoming Meetings</h2>
+@if (Model.UpcomingMeetings.Any())
+{
+    <div class="card-grid">
+        @foreach (var ev in Model.UpcomingMeetings)
+        {
+            <div class="card">
+                <h3>@ev.Title</h3>
+                <p>@ev.StartsAt.ToString("MMM dd, yyyy")</p>
+                <p class="meta">@ev.Venue?.Name &mdash; @ev.Venue?.City</p>
+                <p class="meta">@ev.Registrations.Count registrations</p>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <p>No upcoming meetings.</p>
+}

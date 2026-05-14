@@ -1,0 +1,60 @@
+@page
+@model MeetingFlow.Monolith.Pages.Registrations.CreateModel
+@{
+    ViewData["Title"] = "Register for an Meeting";
+}
+
+@* Educational baseline:
+   This form binds directly to the Registration entity.
+   In production, prefer a dedicated input model (e.g. CreateRegistrationInput). *@
+
+<h1>Register for an Meeting</h1>
+
+<div class="warning-box">
+    <strong>Educational Note:</strong> This form binds directly to the EF Core Registration entity.
+    A malicious user could submit extra fields (e.g., InternalPaymentReference). In production,
+    always use a dedicated input/request model.
+</div>
+
+@if (Model.SuccessMessage is not null)
+{
+    <div class="card" style="background: #d4edda; border-color: #28a745; margin-bottom: 1rem;">
+        <p>@Model.SuccessMessage</p>
+    </div>
+}
+
+<form method="post" style="max-width: 500px;">
+    <div class="field">
+        <label asp-for="Registration.MeetingId">Meeting</label>
+        <select asp-for="Registration.MeetingId">
+            <option value="">-- Select Meeting --</option>
+            @foreach (var ev in Model.AvailableMeetings)
+            {
+                <option value="@ev.Id">@ev.Title (@ev.StartsAt.ToString("MMM dd, yyyy"))</option>
+            }
+        </select>
+    </div>
+
+    <div class="field">
+        <label asp-for="Registration.AttendeeId">Attendee</label>
+        <select asp-for="Registration.AttendeeId">
+            <option value="">-- Select Attendee --</option>
+            @foreach (var att in Model.AvailableAttendees)
+            {
+                <option value="@att.Id">@att.FullName (@att.Email)</option>
+            }
+        </select>
+    </div>
+
+    <div class="field">
+        <label asp-for="Registration.TicketType">Ticket Type</label>
+        <select asp-for="Registration.TicketType">
+            <option value="General">General</option>
+            <option value="VIP">VIP</option>
+            <option value="Early Bird">Early Bird</option>
+            <option value="Student">Student</option>
+        </select>
+    </div>
+
+    <button type="submit">Register</button>
+</form>

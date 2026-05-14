@@ -1,0 +1,70 @@
+@page
+@model MeetingFlow.Monolith.Pages.Meetings.DetailsModel
+@{
+    ViewData["Title"] = Model.Meeting?.Title ?? "Meeting Details";
+}
+
+@* Educational baseline:
+   This page uses the full Meeting entity with all navigation properties loaded.
+   In production, prefer an MeetingDetailsViewModel with only the fields needed for display. *@
+
+@if (Model.Meeting is null)
+{
+    <h1>Meeting Not Found</h1>
+    <p>The requested meeting does not exist.</p>
+}
+else
+{
+    var ev = Model.Meeting;
+    <h1>@ev.Title</h1>
+    <p>
+        <span class="badge @(ev.Status == "Published" ? "badge-published" : ev.Status == "Draft" ? "badge-draft" : "badge-cancelled")">
+            @ev.Status
+        </span>
+    </p>
+    <p>@ev.Description</p>
+
+    <h2>Details</h2>
+    <table>
+        <tr><th>Venue</th><td>@ev.Venue?.Name, @ev.Venue?.Address, @ev.Venue?.City</td></tr>
+        <tr><th>Starts</th><td>@ev.StartsAt.ToString("f")</td></tr>
+        <tr><th>Ends</th><td>@ev.EndsAt.ToString("f")</td></tr>
+        <tr><th>Registrations</th><td>@ev.Registrations.Count</td></tr>
+        <tr><th>Feedback</th><td>@ev.Feedback.Count entries (avg: @(ev.Feedback.Any() ? ev.Feedback.Average(f => f.Rating).ToString("F1") : "N/A"))</td></tr>
+    </table>
+
+    <h2>Sessions</h2>
+    @if (ev.Sessions.Any())
+    {
+        <ul class="session-list">
+            @foreach (var session in ev.Sessions.OrderBy(s => s.StartsAt))
+            {
+                <li>
+                    <strong>@session.Title</strong> &mdash; @session.RoomName<br />
+                    <small>@session.StartsAt.ToString("HH:mm") - @session.EndsAt.ToString("HH:mm")</small><br />
+                    <small>Speaker: <a href="/Speakers/Details?id=@session.Speaker?.Id">@session.Speaker?.FullName</a></small>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No sessions scheduled yet.</p>
+    }
+
+    <h2>Feedback</h2>
+    @if (ev.Feedback.Any())
+    {
+        @foreach (var fb in ev.Feedback)
+        {
+            <div class="card" style="margin-bottom: 0.5rem;">
+                <strong>Rating: @fb.Rating/5</strong> &mdash; @fb.Comment
+                <p class="meta">By attendee @fb.Attendee?.FullName on @fb.CreatedAt.ToString("MMM dd, yyyy")</p>
+            </div>
+        }
+    }
+    else
+    {
+        <p>No feedback yet.</p>
+    }
+}

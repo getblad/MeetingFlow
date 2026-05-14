@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - MeetingFlow</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="brand">MeetingFlow</a>
+        <div class="nav-links">
+            <a href="/Meetings">Meetings</a>
+            <a href="/Dashboard">Dashboard</a>
+            <a href="/Admin/Meetings">Admin: Meetings</a>
+            <a href="/Admin/AuditLog">Admin: Audit Log</a>
+            <a href="/Registrations/Create">Register</a>
+        </div>
+    </nav>
+    <main class="container">
+        @RenderBody()
+    </main>
+    <footer class="footer">
+        <p>MeetingFlow &mdash; DTO Architecture Teaching Baseline</p>
+    </footer>
+</body>
+</html>
