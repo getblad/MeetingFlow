@@ -15,10 +15,9 @@ public static class MeetingsEndpoints
             var meetings = await db.Meetings
                 .Include(e => e.Venue)
                 .Include(e => e.Sessions)
-                .OrderBy(e => e.StartsAt)
                 .ToListAsync();
 
-            return Results.Ok(meetings);
+            return Results.Ok(meetings.OrderBy(e => e.StartsAt).ToList());
         });
 
         // Educational baseline:
@@ -45,10 +44,9 @@ public static class MeetingsEndpoints
             var meetings = await db.Meetings
                 .Include(e => e.Venue)
                 .Include(e => e.Registrations)
-                .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
 
-            return Results.Ok(meetings);
+            return Results.Ok(meetings.OrderByDescending(e => e.CreatedAt).ToList());
         });
 
         // Educational baseline:

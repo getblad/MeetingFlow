@@ -20,9 +20,9 @@ public class IndexModel : PageModel
         // Educational baseline:
         // Full Meeting entities are loaded including internal fields (InternalNotes, AdminOnlyCode).
         // The view only displays a few fields, but the entire entity is available in memory.
-        Meetings = await _db.Meetings
+        var meetings = await _db.Meetings
             .Include(e => e.Venue)
-            .OrderBy(e => e.StartsAt)
             .ToListAsync();
+        Meetings = meetings.OrderBy(e => e.StartsAt).ToList();
     }
 }

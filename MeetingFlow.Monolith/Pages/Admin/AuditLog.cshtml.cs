@@ -18,8 +18,8 @@ public class AuditLogModel : PageModel
 
     public async Task OnGetAsync()
     {
-        AuditLogEntries = await _db.AuditLogEntries
-            .OrderByDescending(a => a.CreatedAt)
+        var entries = await _db.AuditLogEntries
             .ToListAsync();
+        AuditLogEntries = entries.OrderByDescending(a => a.CreatedAt).ToList();
     }
 }

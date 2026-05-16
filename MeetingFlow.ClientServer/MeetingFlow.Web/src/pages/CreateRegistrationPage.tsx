@@ -36,7 +36,8 @@ export default function CreateRegistrationPage() {
       // extra fields like internalPaymentReference.
       await createRegistration({
         meetingId,
-        attendeeId: "00000000-0000-0000-0000-000000000000", // placeholder
+        attendeeName,
+        attendeeEmail,
         ticketType,
       });
       setSuccess("Registration created successfully!");

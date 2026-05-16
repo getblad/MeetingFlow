@@ -14,10 +14,9 @@ public static class AuditLogEndpoints
         app.MapGet("/api/audit-log", async (MeetingFlowDbContext db) =>
         {
             var entries = await db.AuditLogEntries
-                .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
 
-            return Results.Ok(entries);
+            return Results.Ok(entries.OrderByDescending(a => a.CreatedAt).ToList());
         });
     }
 }

@@ -20,13 +20,15 @@ public static class DashboardEndpoints
                 ? await db.Feedback.AverageAsync(f => f.Rating)
                 : 0.0;
 
-            var upcomingMeetings = await db.Meetings
+            var allMeetings = await db.Meetings
                 .Include(e => e.Venue)
                 .Include(e => e.Registrations)
+                .ToListAsync();
+            var upcomingMeetings = allMeetings
                 .Where(e => e.StartsAt > DateTimeOffset.UtcNow && e.Status == "Published")
                 .OrderBy(e => e.StartsAt)
                 .Take(5)
-                .ToListAsync();
+                .ToList();
 
             return Results.Ok(new
             {

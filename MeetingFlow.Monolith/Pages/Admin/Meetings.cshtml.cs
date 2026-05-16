@@ -17,10 +17,10 @@ public class MeetingsModel : PageModel
 
     public async Task OnGetAsync()
     {
-        Meetings = await _db.Meetings
+        var meetings = await _db.Meetings
             .Include(e => e.Venue)
             .Include(e => e.Registrations)
-            .OrderByDescending(e => e.CreatedAt)
             .ToListAsync();
+        Meetings = meetings.OrderByDescending(e => e.CreatedAt).ToList();
     }
 }

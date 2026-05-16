@@ -31,12 +31,14 @@ public class DashboardModel : PageModel
         // Educational baseline:
         // Loading full Meeting entities with navigation properties just for the dashboard.
         // A DashboardViewModel would only include the fields displayed here.
-        UpcomingMeetings = await _db.Meetings
+        var allMeetings = await _db.Meetings
             .Include(e => e.Venue)
             .Include(e => e.Registrations)
+            .ToListAsync();
+        UpcomingMeetings = allMeetings
             .Where(e => e.StartsAt > DateTimeOffset.UtcNow && e.Status == "Published")
             .OrderBy(e => e.StartsAt)
             .Take(5)
-            .ToListAsync();
+            .ToList();
     }
 }
