@@ -1,0 +1,120 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: meetingflow-postgres
+    environment:
+      POSTGRES_USER: meetingflow
+      POSTGRES_PASSWORD: meetingflow
+      POSTGRES_DB: meetingflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meetingflow -d meetingflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - meetingflow
+
+  dataaccessor:
+    build:
+      context: .
+      dockerfile: src/Accessors/DataAccessor/Dockerfile
+    container_name: meetingflow-dataaccessor
+    environment:
+      ASPNETCORE_URLS: http://+:5010
+      POSTGRES_CONN: Host=postgres;Port=5432;Database=meetingflow;Username=meetingflow;Password=meetingflow
+    ports:
+      - "5010:5010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - meetingflow
+
+  notifications-accessor:
+    build:
+      context: .
+      dockerfile: src/Accessors/NotificationsAccessor/Dockerfile
+    container_name: meetingflow-notifications-accessor
+    environment:
+      ASPNETCORE_URLS: http://+:5011
+      POSTGRES_CONN: Host=postgres;Port=5432;Database=meetingflow;Username=meetingflow;Password=meetingflow
+    ports:
+      - "5011:5011"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - meetingflow
+
+  scheduling-engine:
+    build:
+      context: .
+      dockerfile: src/Engines/SchedulingEngine/Dockerfile
+    container_name: meetingflow-scheduling-engine
+    environment:
+      ASPNETCORE_URLS: http://+:5020
+    ports:
+      - "5020:5020"
+    networks:
+      - meetingflow
+
+  meetings-manager:
+    build:
+      context: .
+      dockerfile: src/Managers/MeetingsManager/Dockerfile
+    container_name: meetingflow-meetings-manager
+    environment:
+      ASPNETCORE_URLS: http://+:5030
+      DATA_ACCESSOR_URL: http://dataaccessor:5010
+      SCHEDULING_ENGINE_URL: http://scheduling-engine:5020
+    ports:
+      - "5030:5030"
+    depends_on:
+      - dataaccessor
+      - scheduling-engine
+    networks:
+      - meetingflow
+
+  registrations-manager:
+    build:
+      context: .
+      dockerfile: src/Managers/RegistrationsManager/Dockerfile
+    container_name: meetingflow-registrations-manager
+    environment:
+      ASPNETCORE_URLS: http://+:5031
+      DATA_ACCESSOR_URL: http://dataaccessor:5010
+      SCHEDULING_ENGINE_URL: http://scheduling-engine:5020
+      NOTIFICATIONS_ACCESSOR_URL: http://notifications-accessor:5011
+    ports:
+      - "5031:5031"
+    depends_on:
+      - dataaccessor
+      - scheduling-engine
+      - notifications-accessor
+    networks:
+      - meetingflow
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/Dockerfile
+    container_name: meetingflow-gateway
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      MEETINGS_MANAGER_URL: http://meetings-manager:5030
+      REGISTRATIONS_MANAGER_URL: http://registrations-manager:5031
+    ports:
+      - "8080:8080"
+    depends_on:
+      - meetings-manager
+      - registrations-manager
+    networks:
+      - meetingflow
+
+networks:
+  meetingflow:
+    driver: bridge
