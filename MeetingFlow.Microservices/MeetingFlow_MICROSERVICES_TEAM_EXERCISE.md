@@ -21,11 +21,12 @@ MeetingFlow.Microservices/
 ```
 
 You are working on a distributed system following the **IDesign method**: a public
-Gateway, two Managers (use-case orchestrators), one Engine (pure logic), and two
-Resource Accessors (data + external SMTP).
+Gateway, two Managers (use cases), one Engine (pure logic), and two Resource
+Accessors (database, notifications + SMTP).
 
-The goal is to understand how exposing EF Core / domain entities across **service
-boundaries** couples every service to every other service.
+The goal is to understand how using the same model classes across every
+service boundary couples the database, the managers, the gateway, and the public
+HTTP contract together.
 
 ---
 
@@ -35,25 +36,33 @@ This repository is a teaching project.
 
 The baseline architecture is intentionally imperfect.
 
-Each service redeclares its own copy of every entity. The same `Meeting` shape (with
-`InternalNotes`, `AdminOnlyCode`, full nav properties) flows:
+The microservices project intentionally uses the same model classes everywhere.
+Each service redeclares its own near-duplicate copy of every entity, and the
+same shape flows from the database through the accessor, through the manager,
+through the gateway, and out to the public HTTP response.
+
+That means the same model is used for:
 
 ```text
-Postgres
+Database row (Postgres)
   ↓
-EF Core entity (DataAccessor)
+EF Core entity in the Accessor
   ↓
-REST JSON to MeetingsManager → deserialized into a near-duplicate local class
+REST JSON response from the Accessor
   ↓
-REST JSON to Gateway → deserialized into yet another near-duplicate
+Local class in the Manager
   ↓
-public HTTP response on port 8080
+REST JSON response from the Manager
+  ↓
+Local class in the Gateway
+  ↓
+Public HTTP response on port 8080
 ```
 
-Same pattern for `Registration`, `Attendee`, `Session`, `Notification`.
+This is not recommended production architecture.
 
-This is not recommended production architecture. It is intentionally written this way
-so your team can identify the problems and refactor them later.
+It is intentionally written this way so your team can identify the problems and
+refactor them into proper service contracts later.
 
 ---
 
@@ -68,28 +77,60 @@ The domain includes:
 - Meetings
 - Sessions
 - Speakers
-- Attendees
+- Participants
 - Registrations
 - Venues
 - Feedback
 - Notifications
 
-Same domain as the [MeetingFlow.Monolith](../MeetingFlow.Monolith) and
-[MeetingFlow.ClientServer](../MeetingFlow.ClientServer) examples, so you can compare
-how the same smells show up in three different architectures.
+Same domain as the **MeetingFlow.Monolith** and **MeetingFlow.ClientServer** examples,
+so you can compare how the same smells show up in three different architectures.
+
+The same model is used in many different places.
+
+For example, the `Meeting` model is used as:
+
+- the EF Core entity inside `DataAccessor`
+- the JSON response body returned by `DataAccessor`
+- a local class inside `MeetingsManager`
+- a local class inside `RegistrationsManager` (a second, near-duplicate copy)
+- the JSON response body returned by the Manager
+- a local class inside `Gateway`
+- the public HTTP response on the gateway
+
+This is the main thing you need to notice.
+
+Different services need different things from a `Meeting`, but the baseline
+project uses one large model everywhere.
 
 ---
 
 ## Your Projects
 
-| Service                       | Role            | Port | Notes                                       |
-|-------------------------------|-----------------|------|---------------------------------------------|
-| `Gateway`                     | Client (edge)   | 8080 | Public HTTP edge. Forwards to managers.     |
-| `MeetingsManager`         | Manager         | 5030 | Meeting/session/speaker/admin use cases.    |
-| `RegistrationsManager`    | Manager         | 5031 | Registration + feedback use cases.          |
-| `SchedulingEngine`        | Engine          | 5020 | Pure conflict + capacity logic.             |
-| `DataAccessor`            | Resource Accessor | 5010 | Postgres I/O. Three repositories.         |
-| `NotificationsAccessor`   | Resource Accessor | 5011 | Notifications schema + fake SMTP.         |
+```text
+MeetingFlow/
+  MeetingFlow.Microservices/
+    src/
+      Gateway/                          (public edge, port 8080)
+      Managers/
+        MeetingsManager/                (port 5030)
+        RegistrationsManager/           (port 5031)
+      Engines/
+        SchedulingEngine/               (port 5020)
+      Accessors/
+        DataAccessor/                   (port 5010, Postgres)
+        NotificationsAccessor/          (port 5011, Postgres + fake SMTP)
+```
+
+The microservices project uses:
+
+- ASP.NET Core minimal APIs
+- EF Core
+- Postgres (one container, four schemas)
+- REST between services
+- Docker Compose
+
+No React is needed for your team.
 
 ---
 
@@ -99,11 +140,10 @@ Do not start by rewriting the whole system.
 
 The goal is to refactor gradually.
 
-Each task should focus on **one boundary** between two services, **one endpoint**, or
-**one use case**.
+Each task should focus on one boundary between two services, one endpoint, or
+one use case.
 
-For example, do not refactor every service's `Meeting` class at once. Start with the
-public gateway boundary, because it is the most visible.
+For example, do not refactor every service's `Meeting` class at once.
 
 ---
 
@@ -115,9 +155,11 @@ You should identify and discuss them before fixing them.
 
 ---
 
-## 1. Each service redeclares its own copy of every entity
+## 1. The same model is declared in every service
 
-There is no shared contracts library. `Meeting` is declared four times:
+There is no shared contracts library.
+
+The `Meeting` class is declared four separate times:
 
 ```text
 src/Accessors/DataAccessor/Models/Meeting.cs
@@ -128,184 +170,121 @@ src/Gateway/Models/Meeting.cs
 
 They look the same today. They will not stay that way.
 
-If `DataAccessor`'s `Meeting.Title` is renamed to `Name`, `MeetingsManager`'s deserialized
-copy silently nulls out `Title` with no compile error and no runtime error.
+If one service renames `Title` to `Name`, the other services silently null out
+the field with no compile error.
 
 ---
 
-## 2. The EF Core entity IS the REST request body AND the REST response body
+## 2. EF Core entities are returned directly from every service
 
-`DataAccessor` returns `Meeting` directly from EF. `MeetingsManager` deserializes
-it into its own `Meeting`, hands it to the Gateway, and the Gateway hands it to the public
-caller — internal fields and nav properties included:
+`DataAccessor` returns the EF Core `Meeting` entity straight from the database.
+
+`MeetingsManager` deserializes it into its own near-duplicate `Meeting` and
+returns it as-is.
+
+`Gateway` returns whatever the manager returned, also as-is.
+
+The same shape ends up in the public HTTP response on port 8080.
+
+This means consumers of the public API depend on the persistence model.
+
+If the database model changes, the public API can break.
+
+---
+
+## 3. Public and internal data are mixed together
+
+The same entities contain fields like:
 
 ```text
 InternalNotes
 AdminOnlyCode
-Sessions[].InternalNotes
-Registrations[].InternalPaymentReference
-Venue.InternalContactName / InternalContactPhone
+InternalPaymentReference
+InternalContactName
+InternalContactPhone
+ModerationNotes
+TechnicalDetails
+RawPayloadJson
 ```
+
+These fields may be useful internally, but they should not automatically appear
+in public API responses on the gateway.
+
+Today they do.
 
 ---
 
-## 3. POST endpoints accept full entities
+## 4. POST endpoints accept full entities
 
-`POST /registrations` on the gateway forwards the body to `RegistrationsManager`, which
-accepts a full `Registration` body. The client controls fields it should not:
+The `POST /registrations` endpoint on the gateway forwards the body to
+`RegistrationsManager`, which accepts a full `Registration` entity.
+
+This is risky because the client can set fields that should only be controlled
+by the server.
+
+Examples:
 
 ```text
-PaymentStatus
-InternalPaymentReference
-RegisteredAt
-Id
+payment status
+internal payment reference
+registration id
+registeredAt
 ```
 
 Try it:
 
-```bash
-curl -X POST http://localhost:8080/registrations \
-  -H "Content-Type: application/json" \
+```text
+curl -X POST http://localhost:8080/registrations
+  -H "Content-Type: application/json"
   -d '{
-    "id":"00000000-0000-0000-0000-000000000001",
+    "id":"99999999-9999-9999-9999-000000000001",
     "meetingId":"b2000000-0000-0000-0000-000000000001",
-    "attendeeId":"e5000000-0000-0000-0000-000000000010",
+    "attendeeId":"e5000000-0000-0000-0000-000000000015",
     "ticketType":"VIP",
     "paymentStatus":"Paid",
     "internalPaymentReference":"HACKED-REF-123"
   }'
 ```
 
-The hacked reference will land in the database as-is.
+The "HACKED-REF-123" string lands in the database as-is.
 
 ---
 
-## 4. Engine and Accessor calls receive over-fetched payloads
+## 5. Engine and Accessor calls receive over-fetched payloads
 
-| Caller                        | Callee                                | What's sent                                   | What's actually needed                        |
-|-------------------------------|---------------------------------------|-----------------------------------------------|-----------------------------------------------|
-| `MeetingsManager`             | `SchedulingEngine.check-conflict`     | Full `Session` candidate + full `Session[]`   | `(StartsAt, EndsAt, RoomName)` per session    |
-| `RegistrationsManager`        | `SchedulingEngine.check-capacity`     | Full `Meeting` entity                         | `(venueCapacity, currentRegistrationCount)`   |
-| `RegistrationsManager`        | `NotificationsAccessor./send`         | Full `Attendee` + full `Meeting`              | `(toEmail, subject, body)`                    |
-| `RegistrationsManager` (self) | `InlineTicketPricing.CalculatePrice`  | Full `Meeting` + full `Registration`          | `(ticketType, status, startsAt)`              |
+A service call should send only what the receiver needs.
 
-Inspect the request bodies in `docker compose logs notifications-accessor` after a POST
-to `/registrations` to see this for real.
+The baseline sends entire entities instead.
 
----
-
-## 5. Accessors return entity graphs
-
-`GET /data/meetings/{id}` uses
-`.Include(Sessions).ThenInclude(Speaker).Include(Registrations).ThenInclude(Attendee)`,
-and the entire graph (including `InternalNotes` on every entity, `Email`/`Phone` on
-attendees, `InternalContactName` on the venue) is serialized and sent to the manager.
-
-`GET /notifications` returns full `Notification` entities including the `RawPayloadJson`
-field that carries provider-specific telemetry.
-
----
-
-## 6. No payload versioning
-
-No `v1` namespace, no `$schema` field, no content negotiation. If the request shape
-needs to change, every caller breaks at the same time.
-
----
-
-## 7. Typed HttpClients hide the contract drift
-
-```csharp
-public async Task<Meeting?> GetMeetingAsync(Guid id)
-    => await _http.GetFromJsonAsync<Meeting>($"/data/meetings/{id}");
-```
-
-The returned `Meeting` is the manager's local class. The accessor's `Meeting` is a
-different class with the same shape. The type signature implies a contract that does
-not actually exist.
-
----
-
-## 8. The Gateway is a passthrough
-
-There is no edge model. The Gateway has its own `Meeting` class, but for several
-endpoints it does not even deserialize — it just streams the upstream response body
-back to the public caller. The public API contract is whatever the manager happens to
-return today.
-
----
-
-# Main Learning Goal
-
-The main idea is:
+Examples:
 
 ```text
-In a microservices system, every service-to-service boundary needs its own contract.
-EF entities are not contracts. Internal classes are not contracts. Contracts are
-explicit, versioned, and owned by the boundary.
+SchedulingEngine.check-conflict
+  receives:  the full Session entity, plus a list of full Session entities
+  needs:     startsAt, endsAt, roomName per session
+
+NotificationsAccessor./notifications/send
+  receives:  the full Attendee entity + the full Meeting entity
+  needs:     toEmail, subject, body
+
+RegistrationsManager inline pricing
+  receives:  the full Meeting + the full Registration
+  needs:     ticketType, meeting status, days until meeting
 ```
 
-Before defining a payload that crosses a service boundary, ask:
-
-```text
-Who owns this payload — the producer or the consumer?
-What version is it?
-What is the MINIMUM shape that lets the consumer do its job?
-Can this payload safely evolve without coordinated deploys?
-Does this payload expose data the consumer is not allowed to see?
-```
+You can see this for real by inspecting the notifications accessor logs after a
+POST to `/registrations`.
 
 ---
 
-# Required Tasks for the Microservices Team
+## 6. Different services need different shapes
 
-## Task 1: Explore the baseline
+The same `Meeting` model is used by many services, but each one needs different
+data.
 
-```bash
-docker compose up --build
-```
+### Public meeting list (gateway)
 
-Then call the endpoints listed in the [README](README.md#how-to-run).
-
-### Deliverable
-
-Write a short note answering:
-
-```text
-Which fields appear in the public gateway response that should never leave the backend?
-Which payloads are over-fetched (sent more data than the receiver actually uses)?
-Which classes are redeclared in more than one service, and how likely are they to drift?
-```
-
----
-
-## Task 2: Map the entity duplication
-
-Find every place `Meeting` (or `Session`, `Attendee`, `Registration`) is declared.
-
-### Deliverable
-
-A table:
-
-```text
-| Class    | Files declaring it                  | Differences today | Drift risk |
-|----------|-------------------------------------|-------------------|------------|
-| Meeting  | (list 4 files)                      |                   |            |
-| Session  | (list files)                        |                   |            |
-```
-
----
-
-## Task 3: Introduce a contracts library
-
-Create a new project `MeetingFlow.Microservices.Contracts` referenced by all services.
-
-It should contain endpoint-specific request and response **records** — not EF entities.
-
-Start with the smallest useful one: the **public meeting list**.
-
-Replace the four `Meeting` classes used on that path with one shared response record
-that contains only what the public meeting list actually needs:
+Needs:
 
 ```text
 id
@@ -317,192 +296,97 @@ venueName
 venueCity
 ```
 
-### Deliverable
+### Meeting details page (gateway)
 
-Show before/after diagrams for the `/meetings` request path.
-
----
-
-## Task 4: Add a Gateway edge layer
-
-The public gateway should never return internal fields, even by accident.
-
-Introduce edge request/response models in the Gateway that are explicitly the public
-contract. Anything not listed in the edge model must not appear in the response.
-
-### Deliverable
-
-Pick two endpoints (`GET /meetings/{id}` and `GET /admin/meetings`) and show the new
-edge model. Explain why public and admin edges must be separate.
-
----
-
-## Task 5: Narrow the Engine call
-
-Refactor `MeetingsManager → SchedulingEngine.check-conflict` so the engine receives
-only what it needs.
-
-Define a small request shape (`StartsAt`, `EndsAt`, `RoomName`, plus a list of the
-same shape for existing sessions). Update the engine to accept it.
-
-### Deliverable
-
-Explain why the engine should not depend on the manager's domain model at all.
-
----
-
-## Task 6: Narrow the Accessor call
-
-Refactor `RegistrationsManager → NotificationsAccessor./notifications/send` so the
-accessor receives `(toEmail, subject, body, channel)` instead of full `Attendee` + full
-`Meeting`.
-
-### Deliverable
-
-Explain what the accessor is now allowed to assume about the caller, and what it is
-no longer allowed to know about the meeting domain.
-
----
-
-## Task 7: Lock down `POST /registrations`
-
-The gateway should accept a narrow request shape (`meetingId`, `attendeeId`,
-`ticketType`) — never the full `Registration` entity.
-
-The server controls:
+Needs:
 
 ```text
 id
-registeredAt
-paymentStatus
-internalPaymentReference
+title
+description
+startsAt
+endsAt
+status
+venue
+sessions
+speakers
+feedback summary
 ```
 
-### Deliverable
+### Admin meeting list (gateway, admin only)
 
-Demonstrate that the curl from "What Is Intentionally Wrong #3" can no longer set
-`InternalPaymentReference` after the refactor.
-
----
-
-## Task 8: Version the cross-service payloads
-
-Once your contracts library exists, version it. Move records into a `V1` namespace and
-add a `$version` field (or a header). Show how a `V2` record can coexist with `V1` for
-a deployment window.
-
-### Deliverable
-
-Explain how the producer and consumer can deploy independently if the payloads are
-versioned.
-
----
-
-# Optional Advanced Tasks
-
-## Task 9: Extract the inline pricing into a `PricingEngine`
-
-Today `RegistrationsManager` runs ticket-pricing logic inline against the full `Meeting`
-+ `Registration` entities. Pull this into a proper `PricingEngine` service with a
-narrow request shape:
+Needs:
 
 ```text
-ticketType
-meetingStatus
-daysUntilMeeting
+id
+title
+status
+createdAt
+registrationsCount
+internalNotes
+adminOnlyCode
 ```
 
-### Deliverable
+### SchedulingEngine.check-capacity
 
-Explain why this is the kind of logic that belongs in an Engine, and what changes when
-it stops touching the persistence shape.
-
----
-
-## Task 10: Compare contract strategies
-
-In a microservices system, what are the tradeoffs between:
-
-- a single shared contracts library (Task 3)
-- per-service-owned contracts published over OpenAPI
-- generated clients (e.g. NSwag/Kiota)
-- async event contracts on a message bus
-- consumer-driven contracts (Pact)
-
-### Deliverable
-
-A short comparison table covering ownership, drift risk, deploy coordination, and
-upgrade cost.
-
----
-
-## Task 11: Security audit of cross-service payloads
-
-Find every field that should never leave its bounded context and write a removal plan:
+Needs:
 
 ```text
-InternalNotes               (on Meeting, Session, Speaker, Attendee)
-AdminOnlyCode               (on Meeting)
-InternalPaymentReference    (on Registration)
-RawPayloadJson              (on Notification)
-TechnicalDetails            (on AuditLogEntry)
-ModerationNotes             (on Feedback)
-InternalContactName/Phone   (on Venue)
-Email, Phone                (on Speaker, in public contexts)
+venueCapacity
+currentRegistrationCount
 ```
 
-### Deliverable
+### NotificationsAccessor.send
 
-For each field: which service owns it, which services currently see it, and which
-should be allowed to see it after the refactor.
-
----
-
-# Suggested Refactoring Order
+Needs:
 
 ```text
-1. Contracts library + public /meetings (Task 3)
-2. Gateway edge layer for /meetings/{id} and /admin/meetings (Task 4)
-3. Narrow SchedulingEngine.check-conflict request (Task 5)
-4. Narrow NotificationsAccessor./send request (Task 6)
-5. Narrow POST /registrations request (Task 7)
-6. Version the contracts (Task 8)
-7. Pricing engine extraction (Task 9)
-8. Strategy comparison + security audit (Tasks 10–11)
+toEmail
+subject
+body
 ```
 
-This order starts with the most visible boundary (the public gateway) and works
-inward toward the engine and accessor calls.
+These should probably not all use the same `Meeting` class.
 
 ---
 
-# Questions to Ask During the Exercise
+## 7. The Gateway is a passthrough
+
+There are no edge models.
+
+The gateway hands back whatever the manager returned.
+
+Public consumers see internal fields, internal IDs, audit timestamps, and full
+nested graphs.
+
+---
+
+## 8. No payload versioning
+
+There is no `v1` namespace, no schema-version field, no content negotiation.
+
+If a service needs to change its payload shape, every caller breaks at the
+same time.
+
+---
+
+# Main Learning Goal
+
+The main idea is:
 
 ```text
-1. Which service OWNS this payload's shape?
-2. Is this payload at a system boundary, or internal to one bounded context?
-3. What is the minimum the receiver needs?
-4. Is this data public, admin-only, or internal?
-5. Who is allowed to set this field on the wire?
-6. Can the producer and consumer evolve independently, or must they deploy together?
-7. Should this be a synchronous request/response, or an asynchronous event?
-8. Does this payload allow a caller to do something they should not be able to do?
+In a microservices system, every service-to-service boundary needs its own contract.
+EF Core entities are not contracts.
+Internal classes are not contracts.
+Contracts are explicit, versioned, and owned by the boundary.
 ```
 
----
+Before defining a payload that crosses a service boundary, ask:
 
-# Expected Final Outcome for the Microservices Team
-
-By the end of the exercise, you should understand:
-
-- why every service-to-service hop is a contract, not a function call
-- why redeclared near-duplicate classes are a silent-drift hazard
-- why over-fetching at service boundaries is worse than over-fetching at API boundaries
-- the difference between a Manager's internal model, an Accessor's persistence model,
-  an Engine's pure-function input, and a Gateway's edge model
-- the tradeoffs between shared contracts libraries, OpenAPI-generated contracts,
-  versioned payloads, and async event contracts
-
-You do not need to refactor every service perfectly.
-
-The goal is to understand the boundaries and make intentional architectural decisions.
+```text
+Who owns this payload — the producer or the consumer?
+What version is it?
+What is the MINIMUM shape that lets the consumer do its job?
+Can the producer and consumer deploy independently?
+Does this payload expose data the consumer is not allowed to see?
+```
