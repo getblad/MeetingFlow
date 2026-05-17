@@ -59,11 +59,11 @@ Five services + a gateway + a single Postgres container.
 | # | Service                       | Role            | What it does                                                                          |
 |---|-------------------------------|-----------------|---------------------------------------------------------------------------------------|
 | 1 | `Gateway`                     | Client          | Public REST edge on port 8080. Forwards to managers. No business logic.               |
-| 2 | `MeetingsManager.Api`         | Manager         | Use cases: list/get/update meetings, sessions, admin views, speakers.                 |
-| 3 | `RegistrationsManager.Api`    | Manager         | Use cases: register attendee, submit feedback. Inline ticket-pricing logic.           |
-| 4 | `SchedulingEngine.Api`        | Engine          | Pure logic: session time-window conflict checks, meeting capacity check. No DB.       |
-| 5 | `DataAccessor.Api`            | Resource Accessor | EF Core over the meetings / registrations / feedback schemas. CRUD over REST.       |
-| 6 | `NotificationsAccessor.Api`   | Resource Accessor | Owns the notifications schema AND the fake SMTP gateway. CRUD + `send` over REST.   |
+| 2 | `MeetingsManager`         | Manager         | Use cases: list/get/update meetings, sessions, admin views, speakers.                 |
+| 3 | `RegistrationsManager`    | Manager         | Use cases: register attendee, submit feedback. Inline ticket-pricing logic.           |
+| 4 | `SchedulingEngine`        | Engine          | Pure logic: session time-window conflict checks, meeting capacity check. No DB.       |
+| 5 | `DataAccessor`            | Resource Accessor | EF Core over the meetings / registrations / feedback schemas. CRUD over REST.       |
+| 6 | `NotificationsAccessor`   | Resource Accessor | Owns the notifications schema AND the fake SMTP gateway. CRUD + `send` over REST.   |
 
 ### IDesign call rules (enforced in code)
 
@@ -76,13 +76,13 @@ Five services + a gateway + a single Postgres container.
 ### Compromises for tractability (the plan was max 5 services)
 
 - Pricing logic is **inlined** into `RegistrationsManager` instead of being a separate
-  `PricingEngine.Api`. See [InlineTicketPricing.cs](src/Managers/RegistrationsManager.Api/Pricing/InlineTicketPricing.cs).
+  `PricingEngine.Api`. See [InlineTicketPricing.cs](src/Managers/RegistrationsManager/Pricing/InlineTicketPricing.cs).
   Extracting it is the bonus refactor.
-- `DataAccessor.Api` **co-deploys three repositories** (meetings, registrations, feedback)
+- `DataAccessor` **co-deploys three repositories** (meetings, registrations, feedback)
   instead of being three separate accessor services. The layering lesson survives via
   the per-schema repository classes in
-  [src/Accessors/DataAccessor.Api/Repositories/](src/Accessors/DataAccessor.Api/Repositories/).
-- `NotificationsAccessor.Api` is split out because notifications has a second resource —
+  [src/Accessors/DataAccessor/Repositories/](src/Accessors/DataAccessor/Repositories/).
+- `NotificationsAccessor` is split out because notifications has a second resource —
   the SMTP gateway — which is the classic IDesign justification for a dedicated accessor.
 
 ---
@@ -186,13 +186,13 @@ MeetingFlow.Microservices/
 └── src/
     ├── Gateway/                          (port 8080, Client edge)
     ├── Managers/
-    │   ├── MeetingsManager.Api/          (port 5030, Manager)
-    │   └── RegistrationsManager.Api/     (port 5031, Manager; inline pricing inside)
+    │   ├── MeetingsManager/          (port 5030, Manager)
+    │   └── RegistrationsManager/     (port 5031, Manager; inline pricing inside)
     ├── Engines/
-    │   └── SchedulingEngine.Api/         (port 5020, Engine)
+    │   └── SchedulingEngine/         (port 5020, Engine)
     └── Accessors/
-        ├── DataAccessor.Api/             (port 5010, Accessor; meetings/registrations/feedback)
-        └── NotificationsAccessor.Api/    (port 5011, Accessor; notifications + fake SMTP)
+        ├── DataAccessor/             (port 5010, Accessor; meetings/registrations/feedback)
+        └── NotificationsAccessor/    (port 5011, Accessor; notifications + fake SMTP)
 ```
 
 See [MeetingFlow_MICROSERVICES_TEAM_EXERCISE.md](MeetingFlow_MICROSERVICES_TEAM_EXERCISE.md)
