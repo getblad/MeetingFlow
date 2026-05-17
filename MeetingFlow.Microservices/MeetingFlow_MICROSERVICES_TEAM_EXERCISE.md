@@ -11,13 +11,13 @@ MeetingFlow.Microservices/
   src/
     Gateway/
     Managers/
-      MeetingsManager.Api/
-      RegistrationsManager.Api/
+      MeetingsManager/
+      RegistrationsManager/
     Engines/
-      SchedulingEngine.Api/
+      SchedulingEngine/
     Accessors/
-      DataAccessor.Api/
-      NotificationsAccessor.Api/
+      DataAccessor/
+      NotificationsAccessor/
 ```
 
 You are working on a distributed system following the **IDesign method**: a public
@@ -85,11 +85,11 @@ how the same smells show up in three different architectures.
 | Service                       | Role            | Port | Notes                                       |
 |-------------------------------|-----------------|------|---------------------------------------------|
 | `Gateway`                     | Client (edge)   | 8080 | Public HTTP edge. Forwards to managers.     |
-| `MeetingsManager.Api`         | Manager         | 5030 | Meeting/session/speaker/admin use cases.    |
-| `RegistrationsManager.Api`    | Manager         | 5031 | Registration + feedback use cases.          |
-| `SchedulingEngine.Api`        | Engine          | 5020 | Pure conflict + capacity logic.             |
-| `DataAccessor.Api`            | Resource Accessor | 5010 | Postgres I/O. Three repositories.         |
-| `NotificationsAccessor.Api`   | Resource Accessor | 5011 | Notifications schema + fake SMTP.         |
+| `MeetingsManager`         | Manager         | 5030 | Meeting/session/speaker/admin use cases.    |
+| `RegistrationsManager`    | Manager         | 5031 | Registration + feedback use cases.          |
+| `SchedulingEngine`        | Engine          | 5020 | Pure conflict + capacity logic.             |
+| `DataAccessor`            | Resource Accessor | 5010 | Postgres I/O. Three repositories.         |
+| `NotificationsAccessor`   | Resource Accessor | 5011 | Notifications schema + fake SMTP.         |
 
 ---
 
@@ -120,9 +120,9 @@ You should identify and discuss them before fixing them.
 There is no shared contracts library. `Meeting` is declared four times:
 
 ```text
-src/Accessors/DataAccessor.Api/Models/Meeting.cs
-src/Managers/MeetingsManager.Api/Models/Meeting.cs
-src/Managers/RegistrationsManager.Api/Models/Meeting.cs
+src/Accessors/DataAccessor/Models/Meeting.cs
+src/Managers/MeetingsManager/Models/Meeting.cs
+src/Managers/RegistrationsManager/Models/Meeting.cs
 src/Gateway/Models/Meeting.cs
 ```
 
@@ -135,7 +135,7 @@ copy silently nulls out `Title` with no compile error and no runtime error.
 
 ## 2. The EF Core entity IS the REST request body AND the REST response body
 
-`DataAccessor.Api` returns `Meeting` directly from EF. `MeetingsManager.Api` deserializes
+`DataAccessor` returns `Meeting` directly from EF. `MeetingsManager` deserializes
 it into its own `Meeting`, hands it to the Gateway, and the Gateway hands it to the public
 caller — internal fields and nav properties included:
 
@@ -400,10 +400,10 @@ versioned.
 
 # Optional Advanced Tasks
 
-## Task 9: Extract the inline pricing into a `PricingEngine.Api`
+## Task 9: Extract the inline pricing into a `PricingEngine`
 
 Today `RegistrationsManager` runs ticket-pricing logic inline against the full `Meeting`
-+ `Registration` entities. Pull this into a proper `PricingEngine.Api` service with a
++ `Registration` entities. Pull this into a proper `PricingEngine` service with a
 narrow request shape:
 
 ```text
