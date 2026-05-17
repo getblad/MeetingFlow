@@ -21,19 +21,29 @@ MeetingFlow/
 │   ├── Pages/                         # Razor Pages (UI)
 │   └── Program.cs
 │
-└── MeetingFlow.ClientServer/            # Project 2: Client-server architecture
-    ├── MeetingFlow.Api/                 # ASP.NET Core Web API
-    │   ├── Models/                    # EF Core entity models (same as monolith)
-    │   ├── Data/                      # DbContext + seed data
-    │   ├── Endpoints/                 # Minimal API endpoints + GraphQL
-    │   └── Program.cs
-    │
-    └── MeetingFlow.Web/                 # React + TypeScript + Vite frontend
-        └── src/
-            ├── types/models.ts        # TypeScript types mirroring backend entities
-            ├── api/                   # HTTP client functions
-            ├── components/            # React components
-            └── pages/                 # React pages
+├── MeetingFlow.ClientServer/            # Project 2: Client-server architecture
+│   ├── MeetingFlow.Api/                 # ASP.NET Core Web API
+│   │   ├── Models/                    # EF Core entity models (same as monolith)
+│   │   ├── Data/                      # DbContext + seed data
+│   │   ├── Endpoints/                 # Minimal API endpoints + GraphQL
+│   │   └── Program.cs
+│   │
+│   └── MeetingFlow.Web/                 # React + TypeScript + Vite frontend
+│       └── src/
+│           ├── types/models.ts        # TypeScript types mirroring backend entities
+│           ├── api/                   # HTTP client functions
+│           ├── components/            # React components
+│           └── pages/                 # React pages
+│
+└── MeetingFlow.Microservices/           # Project 3: IDesign-style microservices
+    ├── docker-compose.yml             # Postgres + 6 services
+    ├── infra/postgres/init.sql        # Four schemas in one Postgres container
+    ├── src/
+    │   ├── Gateway/                   # Public HTTP edge (Client)
+    │   ├── Managers/                  # MeetingsManager, RegistrationsManager
+    │   ├── Engines/                   # SchedulingEngine (pure logic)
+    │   └── Accessors/                 # DataAccessor, NotificationsAccessor
+    └── tests/                         # xUnit integration tests (fail by design)
 ```
 
 ### MeetingFlow.Monolith
@@ -46,6 +56,10 @@ A client-server architecture with:
 
 - **MeetingFlow.Api** — ASP.NET Core Web API exposing EF Core entities directly through REST endpoints and optional GraphQL (Hot Chocolate).
 - **MeetingFlow.Web** — React + TypeScript + Vite SPA that mirrors backend entities as TypeScript types.
+
+### MeetingFlow.Microservices
+
+An IDesign-style microservices system (one Gateway, two Managers, one Engine, two Resource Accessors) running on Docker Compose with Postgres. Each service redeclares its own near-duplicate copy of every entity, and the same shape flows from the database through every service to the public gateway response. No shared contracts library, no edge DTOs, no payload versioning.
 
 ---
 
@@ -88,6 +102,23 @@ npm run dev
 Open [http://localhost:5173](http://localhost:5173).
 The Vite dev server proxies `/api` and `/graphql` requests to the API.
 
+### MeetingFlow.Microservices
+
+```bash
+cd MeetingFlow.Microservices
+docker compose up --build
+```
+
+The public gateway is available at [http://localhost:8080](http://localhost:8080). Postgres comes up first (with a healthcheck) and the six services start in dependency order. The schemas (`meetings`, `registrations`, `feedback`, `notifications`) are created via `infra/postgres/init.sql` and seeded automatically on first start.
+
+To run the integration tests against the live stack (from this directory):
+
+```bash
+dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests
+```
+
+All tests are expected to fail against the baseline — that's the teaching signal.
+
 ---
 
 ## Domain Model
@@ -110,8 +141,9 @@ The domain covers meeting/conference management with these entities:
 
 ## Tech Stack
 
-| Layer    | Technology                                                           |
-| -------- | -------------------------------------------------------------------- |
-| Monolith | ASP.NET Core, Razor Pages, EF Core, SQLite                           |
-| API      | ASP.NET Core, Minimal APIs, EF Core, SQLite, Hot Chocolate (GraphQL) |
-| Frontend | React, TypeScript, Vite, React Router                                |
+| Layer         | Technology                                                           |
+| ------------- | -------------------------------------------------------------------- |
+| Monolith      | ASP.NET Core, Razor Pages, EF Core, SQLite                           |
+| API           | ASP.NET Core, Minimal APIs, EF Core, SQLite, Hot Chocolate (GraphQL) |
+| Frontend      | React, TypeScript, Vite, React Router                                |
+| Microservices | ASP.NET Core Minimal APIs, EF Core, Postgres, Docker Compose         |
