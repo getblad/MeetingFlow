@@ -20,7 +20,7 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "MeetingsManager.Api" }));
+app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "MeetingsManager" }));
 
 // Public meeting list — returns whatever the accessor returned, untouched.
 app.MapGet("/meetings", async (DataAccessorClient data) =>

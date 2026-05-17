@@ -4,7 +4,7 @@ namespace RegistrationsManager.Pricing;
 
 // Intentionally NOT a separate Engine service. The pricing rules live inside the Manager
 // and operate on the full Meeting + Registration entities even though only TicketType,
-// Status, and StartsAt matter. Refactoring this into a real PricingEngine.Api with a
+// Status, and StartsAt matter. Refactoring this into a real PricingEngine with a
 // narrow request shape is the bonus exercise.
 public static class InlineTicketPricing
 {

@@ -3,7 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>SchedulingEngine</RootNamespace>
-    <AssemblyName>SchedulingEngine.Api</AssemblyName>
+    <RootNamespace>MeetingsManager</RootNamespace>
+    <AssemblyName>MeetingsManager</AssemblyName>
   </PropertyGroup>
 </Project>

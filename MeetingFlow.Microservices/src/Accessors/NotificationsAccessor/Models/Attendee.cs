@@ -2,7 +2,7 @@ namespace NotificationsAccessor.Models;
 
 // Intentionally redeclared. Callers send the full Attendee entity to /notifications/send
 // even though we only need the email address. Lives here as its own near-duplicate of
-// the Attendee class declared inside DataAccessor.Api. They will drift over time.
+// the Attendee class declared inside DataAccessor. They will drift over time.
 public class Attendee
 {
     public Guid Id { get; set; }

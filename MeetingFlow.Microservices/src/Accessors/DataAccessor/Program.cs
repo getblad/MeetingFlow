@@ -32,7 +32,7 @@ using (var scope = app.Services.CreateScope())
     SeedData.Initialize(db);
 }
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "DataAccessor.Api" }));
+app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "DataAccessor" }));
 
 // Meetings repository endpoints — return full entity graphs on purpose.
 app.MapGet("/data/meetings", async (MeetingsRepository r) => Results.Ok(await r.GetAllAsync()));

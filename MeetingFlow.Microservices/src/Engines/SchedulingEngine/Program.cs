@@ -3,7 +3,7 @@ using SchedulingEngine.Models;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "SchedulingEngine.Api" }));
+app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "SchedulingEngine" }));
 
 // Pure logic. Receives the candidate session AND the list of already-scheduled sessions
 // in the room. Each one is sent as a full Session entity even though only time/room is used.

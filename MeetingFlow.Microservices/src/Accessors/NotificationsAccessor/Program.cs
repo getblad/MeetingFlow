@@ -30,7 +30,7 @@ using (var scope = app.Services.CreateScope())
     SeedData.Initialize(db);
 }
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "NotificationsAccessor.Api" }));
+app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "NotificationsAccessor" }));
 
 app.MapGet("/notifications", async (NotificationsDbContext db) =>
     Results.Ok(await db.Notifications.OrderByDescending(n => n.SentAt).ToListAsync()));

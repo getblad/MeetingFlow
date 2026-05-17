@@ -21,7 +21,7 @@ services:
   dataaccessor:
     build:
       context: .
-      dockerfile: src/Accessors/DataAccessor.Api/Dockerfile
+      dockerfile: src/Accessors/DataAccessor/Dockerfile
     container_name: meetingflow-dataaccessor
     environment:
       ASPNETCORE_URLS: http://+:5010
@@ -37,7 +37,7 @@ services:
   notifications-accessor:
     build:
       context: .
-      dockerfile: src/Accessors/NotificationsAccessor.Api/Dockerfile
+      dockerfile: src/Accessors/NotificationsAccessor/Dockerfile
     container_name: meetingflow-notifications-accessor
     environment:
       ASPNETCORE_URLS: http://+:5011
@@ -53,7 +53,7 @@ services:
   scheduling-engine:
     build:
       context: .
-      dockerfile: src/Engines/SchedulingEngine.Api/Dockerfile
+      dockerfile: src/Engines/SchedulingEngine/Dockerfile
     container_name: meetingflow-scheduling-engine
     environment:
       ASPNETCORE_URLS: http://+:5020
@@ -65,7 +65,7 @@ services:
   meetings-manager:
     build:
       context: .
-      dockerfile: src/Managers/MeetingsManager.Api/Dockerfile
+      dockerfile: src/Managers/MeetingsManager/Dockerfile
     container_name: meetingflow-meetings-manager
     environment:
       ASPNETCORE_URLS: http://+:5030
@@ -82,7 +82,7 @@ services:
   registrations-manager:
     build:
       context: .
-      dockerfile: src/Managers/RegistrationsManager.Api/Dockerfile
+      dockerfile: src/Managers/RegistrationsManager/Dockerfile
     container_name: meetingflow-registrations-manager
     environment:
       ASPNETCORE_URLS: http://+:5031

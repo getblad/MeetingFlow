@@ -25,7 +25,7 @@ builder.Services.ConfigureHttpJsonOptions(o =>
 
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "RegistrationsManager.Api" }));
+app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "RegistrationsManager" }));
 
 app.MapGet("/registrations/by-meeting/{meetingId:guid}", async (Guid meetingId, DataAccessorClient data) =>
     Results.Ok(await data.GetRegistrationsForMeetingAsync(meetingId)));
