@@ -3,4 +3,20 @@
     <Project Path="MeetingFlow.ClientServer/MeetingFlow.Api/MeetingFlow.Api.csproj" />
   </Folder>
   <Project Path="MeetingFlow.Monolith/MeetingFlow.Monolith.csproj" />
+  <Folder Name="/MeetingFlow.Microservices/">
+    <Folder Name="/MeetingFlow.Microservices/Gateway/">
+      <Project Path="MeetingFlow.Microservices/src/Gateway/Gateway.csproj" />
+    </Folder>
+    <Folder Name="/MeetingFlow.Microservices/Managers/">
+      <Project Path="MeetingFlow.Microservices/src/Managers/MeetingsManager.Api/MeetingsManager.Api.csproj" />
+      <Project Path="MeetingFlow.Microservices/src/Managers/RegistrationsManager.Api/RegistrationsManager.Api.csproj" />
+    </Folder>
+    <Folder Name="/MeetingFlow.Microservices/Engines/">
+      <Project Path="MeetingFlow.Microservices/src/Engines/SchedulingEngine.Api/SchedulingEngine.Api.csproj" />
+    </Folder>
+    <Folder Name="/MeetingFlow.Microservices/Accessors/">
+      <Project Path="MeetingFlow.Microservices/src/Accessors/DataAccessor.Api/DataAccessor.Api.csproj" />
+      <Project Path="MeetingFlow.Microservices/src/Accessors/NotificationsAccessor.Api/NotificationsAccessor.Api.csproj" />
+    </Folder>
+  </Folder>
 </Solution>

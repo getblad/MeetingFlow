@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/Gateway/">
+    <Project Path="src/Gateway/Gateway.csproj" />
+  </Folder>
+  <Folder Name="/Managers/">
+    <Project Path="src/Managers/MeetingsManager.Api/MeetingsManager.Api.csproj" />
+    <Project Path="src/Managers/RegistrationsManager.Api/RegistrationsManager.Api.csproj" />
+  </Folder>
+  <Folder Name="/Engines/">
+    <Project Path="src/Engines/SchedulingEngine.Api/SchedulingEngine.Api.csproj" />
+  </Folder>
+  <Folder Name="/Accessors/">
+    <Project Path="src/Accessors/DataAccessor.Api/DataAccessor.Api.csproj" />
+    <Project Path="src/Accessors/NotificationsAccessor.Api/NotificationsAccessor.Api.csproj" />
+  </Folder>
+</Solution>
