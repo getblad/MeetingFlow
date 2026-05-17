@@ -76,7 +76,7 @@ Five services + a gateway + a single Postgres container.
 ### Compromises for tractability (the plan was max 5 services)
 
 - Pricing logic is **inlined** into `RegistrationsManager` instead of being a separate
-  `PricingEngine.Api`. See [InlineTicketPricing.cs](src/Managers/RegistrationsManager/Pricing/InlineTicketPricing.cs).
+  `PricingEngine`. See [InlineTicketPricing.cs](src/Managers/RegistrationsManager/Pricing/InlineTicketPricing.cs).
   Extracting it is the bonus refactor.
 - `DataAccessor` **co-deploys three repositories** (meetings, registrations, feedback)
   instead of being three separate accessor services. The layering lesson survives via
