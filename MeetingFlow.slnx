@@ -4,19 +4,11 @@
   </Folder>
   <Project Path="MeetingFlow.Monolith/MeetingFlow.Monolith.csproj" />
   <Folder Name="/MeetingFlow.Microservices/">
-    <Folder Name="/MeetingFlow.Microservices/Gateway/">
-      <Project Path="MeetingFlow.Microservices/src/Gateway/Gateway.csproj" />
-    </Folder>
-    <Folder Name="/MeetingFlow.Microservices/Managers/">
-      <Project Path="MeetingFlow.Microservices/src/Managers/MeetingsManager/MeetingsManager.csproj" />
-      <Project Path="MeetingFlow.Microservices/src/Managers/RegistrationsManager/RegistrationsManager.csproj" />
-    </Folder>
-    <Folder Name="/MeetingFlow.Microservices/Engines/">
-      <Project Path="MeetingFlow.Microservices/src/Engines/SchedulingEngine/SchedulingEngine.csproj" />
-    </Folder>
-    <Folder Name="/MeetingFlow.Microservices/Accessors/">
-      <Project Path="MeetingFlow.Microservices/src/Accessors/DataAccessor/DataAccessor.csproj" />
-      <Project Path="MeetingFlow.Microservices/src/Accessors/NotificationsAccessor/NotificationsAccessor.csproj" />
-    </Folder>
+    <Project Path="MeetingFlow.Microservices/src/Gateway/Gateway.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Managers/MeetingsManager/MeetingsManager.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Managers/RegistrationsManager/RegistrationsManager.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Engines/SchedulingEngine/SchedulingEngine.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Accessors/DataAccessor/DataAccessor.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Accessors/NotificationsAccessor/NotificationsAccessor.csproj" />
   </Folder>
 </Solution>
