@@ -111,13 +111,9 @@ docker compose up --build
 
 The public gateway is available at [http://localhost:8080](http://localhost:8080). Postgres comes up first (with a healthcheck) and the six services start in dependency order. The schemas (`meetings`, `registrations`, `feedback`, `notifications`) are created via `infra/postgres/init.sql` and seeded automatically on first start.
 
-To run the integration tests against the live stack (from this directory):
-
-```bash
-dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests
-```
-
-All tests are expected to fail against the baseline — that's the teaching signal.
+The `MeetingFlow.Microservices/tests` directory is a clean starting point for
+the components and integration tests lecture. Exercise implementations are not
+included in the starter repository.
 
 ---
 
