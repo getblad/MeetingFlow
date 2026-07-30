@@ -11,4 +11,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/NotificationsAccessor.Contracts/NotificationsAccessor.Contracts.csproj" />
+    <ProjectReference Include="../../Contracts/MeetingFlow.IntegrationEvents/MeetingFlow.IntegrationEvents.csproj" />
+  </ItemGroup>
 </Project>

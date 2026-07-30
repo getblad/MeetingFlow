@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+COPY src/Contracts/ src/Contracts/
 COPY src/Accessors/DataAccessor/DataAccessor.csproj src/Accessors/DataAccessor/
 RUN dotnet restore src/Accessors/DataAccessor/DataAccessor.csproj
 COPY src/Accessors/DataAccessor/ src/Accessors/DataAccessor/

@@ -1,6 +1,8 @@
 using System.Text;
 using System.Text.Json;
+using MeetingFlow.IntegrationEvents;
 using NotificationsAccessor.Data;
+using NotificationsAccessor.Infrastructure;
 using NotificationsAccessor.Models;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -12,19 +14,23 @@ public class RegistrationEventConsumer : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly string _rabbitUrl;
     private readonly ILogger<RegistrationEventConsumer> _logger;
+    private readonly FakeSmtpGateway _smtp;
     private const string ExchangeName = "meetingflow.events";
     private const string QueueName = "notifications.registration-created";
+    private const string RoutingKey = "registration.created.v1";
 
     public RegistrationEventConsumer(
         IServiceScopeFactory scopeFactory,
         IConfiguration config,
-        ILogger<RegistrationEventConsumer> logger)
+        ILogger<RegistrationEventConsumer> logger,
+        FakeSmtpGateway smtp)
     {
         _scopeFactory = scopeFactory;
         _rabbitUrl = config["RABBITMQ_URL"]
             ?? Environment.GetEnvironmentVariable("RABBITMQ_URL")
             ?? "amqp://guest:guest@localhost:5672";
         _logger = logger;
+        _smtp = smtp;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -51,7 +57,11 @@ public class RegistrationEventConsumer : BackgroundService
         var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
         await channel.ExchangeDeclareAsync(ExchangeName, ExchangeType.Topic, durable: true, cancellationToken: stoppingToken);
         await channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false, cancellationToken: stoppingToken);
-        await channel.QueueBindAsync(QueueName, ExchangeName, "registration.created", cancellationToken: stoppingToken);
+        await channel.QueueBindAsync(
+            QueueName,
+            ExchangeName,
+            RoutingKey,
+            cancellationToken: stoppingToken);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
         consumer.ReceivedAsync += async (_, ea) =>
@@ -59,7 +69,7 @@ public class RegistrationEventConsumer : BackgroundService
             try
             {
                 var json = Encoding.UTF8.GetString(ea.Body.ToArray());
-                var evt = JsonSerializer.Deserialize<RegistrationCreatedEvent>(json);
+                var evt = JsonSerializer.Deserialize<RegistrationCreatedV1>(json);
                 if (evt is not null)
                 {
                     await HandleEventAsync(evt);
@@ -79,7 +89,7 @@ public class RegistrationEventConsumer : BackgroundService
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
-    private async Task HandleEventAsync(RegistrationCreatedEvent evt)
+    private async Task HandleEventAsync(RegistrationCreatedV1 evt)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
@@ -97,14 +107,13 @@ public class RegistrationEventConsumer : BackgroundService
 
         db.Notifications.Add(notification);
         await db.SaveChangesAsync();
+
+        await _smtp.SendAsync(
+            evt.RecipientEmail,
+            notification.Subject,
+            notification.Body,
+            notification.RawPayloadJson);
+
         _logger.LogInformation("Processed registration.created event for {RegistrationId}", evt.RegistrationId);
     }
 }
-
-public record RegistrationCreatedEvent(
-    Guid RegistrationId,
-    Guid MeetingId,
-    Guid AttendeeId,
-    string MeetingTitle,
-    string AttendeeEmail,
-    DateTimeOffset RegisteredAt);

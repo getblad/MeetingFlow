@@ -6,4 +6,9 @@
     <RootNamespace>Gateway</RootNamespace>
     <AssemblyName>Gateway</AssemblyName>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Contracts/AiChatEngine.Contracts/AiChatEngine.Contracts.csproj" />
+    <ProjectReference Include="../Contracts/MeetingsManager.Contracts/MeetingsManager.Contracts.csproj" />
+    <ProjectReference Include="../Contracts/RegistrationsManager.Contracts/RegistrationsManager.Contracts.csproj" />
+  </ItemGroup>
 </Project>

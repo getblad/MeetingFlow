@@ -6,4 +6,9 @@
     <RootNamespace>MeetingsManager</RootNamespace>
     <AssemblyName>MeetingsManager</AssemblyName>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/DataAccessor.Contracts/DataAccessor.Contracts.csproj" />
+    <ProjectReference Include="../../Contracts/MeetingsManager.Contracts/MeetingsManager.Contracts.csproj" />
+    <ProjectReference Include="../../Contracts/SchedulingEngine.Contracts/SchedulingEngine.Contracts.csproj" />
+  </ItemGroup>
 </Project>

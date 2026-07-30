@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using NotificationsAccessor.Contracts;
 using NotificationsAccessor.Data;
 using NotificationsAccessor.Infrastructure;
 using NotificationsAccessor.Messaging;
@@ -14,11 +15,6 @@ var conn = builder.Configuration["POSTGRES_CONN"]
 builder.Services.AddDbContext<NotificationsDbContext>(o => o.UseNpgsql(conn));
 builder.Services.AddSingleton<FakeSmtpGateway>();
 builder.Services.AddHostedService<RegistrationEventConsumer>();
-
-builder.Services.ConfigureHttpJsonOptions(o =>
-{
-    o.SerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-});
 
 var app = builder.Build();
 
@@ -44,42 +40,61 @@ using (var scope = app.Services.CreateScope())
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "NotificationsAccessor" }));
 
 app.MapGet("/notifications", async (NotificationsDbContext db) =>
-    Results.Ok(await db.Notifications.OrderByDescending(n => n.SentAt).ToListAsync()));
+    Results.Ok((await db.Notifications
+            .OrderByDescending(notification => notification.SentAt)
+            .ToListAsync())
+        .Select(ToDto)));
 
 app.MapGet("/notifications/by-attendee/{attendeeId:guid}", async (Guid attendeeId, NotificationsDbContext db) =>
-    Results.Ok(await db.Notifications.Where(n => n.AttendeeId == attendeeId).ToListAsync()));
+    Results.Ok((await db.Notifications
+            .Where(notification => notification.AttendeeId == attendeeId)
+            .OrderByDescending(notification => notification.SentAt)
+            .ToListAsync())
+        .Select(ToDto)));
 
-app.MapPost("/notifications", async (Notification body, NotificationsDbContext db) =>
+app.MapPost("/notifications/send", async (
+    SendNotificationRequest request,
+    NotificationsDbContext db,
+    FakeSmtpGateway smtp) =>
 {
-    db.Notifications.Add(body);
-    await db.SaveChangesAsync();
-    return Results.Created($"/notifications/{body.Id}", body);
-});
+    if (string.IsNullOrWhiteSpace(request.RecipientEmail)
+        || string.IsNullOrWhiteSpace(request.Subject)
+        || string.IsNullOrWhiteSpace(request.Body))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["notification"] = ["RecipientEmail, Subject and Body are required."]
+        });
+    }
 
-// Intentionally over-fetched: receives the entire Attendee + entire Meeting just to send an email.
-app.MapPost("/notifications/send", async (SendNotificationCommand cmd, NotificationsDbContext db, FakeSmtpGateway smtp) =>
-{
     var notification = new Notification
     {
         Id = Guid.NewGuid(),
-        AttendeeId = cmd.Attendee.Id,
-        Type = cmd.Channel,
-        Subject = $"{cmd.Channel}: {cmd.Meeting.Title}",
-        Body = cmd.Body,
-        RawPayloadJson = System.Text.Json.JsonSerializer.Serialize(cmd),
+        AttendeeId = request.AttendeeId,
+        Type = request.Channel,
+        Subject = request.Subject,
+        Body = request.Body,
+        RawPayloadJson = System.Text.Json.JsonSerializer.Serialize(request),
         SentAt = DateTimeOffset.UtcNow
     };
     db.Notifications.Add(notification);
     await db.SaveChangesAsync();
-    await smtp.SendAsync(cmd.Attendee.Email, notification.Subject, cmd.Body, notification.RawPayloadJson);
-    return Results.Ok(notification);
+    await smtp.SendAsync(
+        request.RecipientEmail,
+        notification.Subject,
+        notification.Body,
+        notification.RawPayloadJson);
+
+    return Results.Ok(ToDto(notification));
 });
 
 app.Run();
 
-// Bound from the request body; deliberately accepts whole entities.
-public record SendNotificationCommand(
-    NotificationsAccessor.Models.Attendee Attendee,
-    NotificationsAccessor.Models.Meeting Meeting,
-    string Channel,
-    string Body);
+static NotificationDto ToDto(Notification notification) =>
+    new(
+        notification.Id,
+        notification.AttendeeId,
+        notification.Type,
+        notification.Subject,
+        notification.Body,
+        notification.SentAt);

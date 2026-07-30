@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+COPY src/Contracts/ src/Contracts/
 COPY src/Gateway/Gateway.csproj src/Gateway/
 RUN dotnet restore src/Gateway/Gateway.csproj
 COPY src/Gateway/ src/Gateway/

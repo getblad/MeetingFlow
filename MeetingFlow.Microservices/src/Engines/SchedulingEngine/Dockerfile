@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+COPY src/Contracts/ src/Contracts/
 COPY src/Engines/SchedulingEngine/SchedulingEngine.csproj src/Engines/SchedulingEngine/
 RUN dotnet restore src/Engines/SchedulingEngine/SchedulingEngine.csproj
 COPY src/Engines/SchedulingEngine/ src/Engines/SchedulingEngine/

@@ -4,7 +4,12 @@ using RabbitMQ.Client;
 
 namespace RegistrationsManager.Messaging;
 
-public class EventPublisher : IAsyncDisposable
+public interface IEventPublisher
+{
+    Task PublishAsync<T>(string routingKey, T message);
+}
+
+public class EventPublisher : IEventPublisher, IAsyncDisposable
 {
     private readonly IConnection _connection;
     private readonly IChannel _channel;

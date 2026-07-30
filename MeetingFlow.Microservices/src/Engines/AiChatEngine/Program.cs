@@ -1,5 +1,7 @@
 using AiChatEngine.Clients;
+using AiChatEngine.Contracts;
 using AiChatEngine.Services;
+using DataAccessor.Contracts;
 using Microsoft.Extensions.AI;
 using OpenAI;
 
@@ -32,24 +34,34 @@ var app = builder.Build();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "AiChatEngine" }));
 
-// Chat endpoint: receives a message, returns a response + executes any action.
 app.MapPost("/chat", async (ChatRequest request, IChatService chat, DataAccessorClient data) =>
 {
-    var response = await chat.ProcessAsync(request.Message, request.History ?? []);
+    if (string.IsNullOrWhiteSpace(request.Message))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["message"] = ["Message is required."]
+        });
+    }
 
-    // Execute the action if one was returned.
+    var history = request.History?
+        .Select(message => new AiChatEngine.Services.ChatMessage(
+            message.Role,
+            message.Content))
+        .ToList() ?? [];
+    var response = await chat.ProcessAsync(request.Message.Trim(), history);
+
     object? actionResult = null;
     if (response.Action is not null)
     {
         actionResult = await ExecuteActionAsync(response.Action, data);
     }
 
-    return Results.Ok(new
-    {
-        reply = response.Reply,
-        action = response.Action,
-        data = actionResult
-    });
+    var action = response.Action is null
+        ? null
+        : new ChatActionDto(response.Action.Type, response.Action.Parameters);
+
+    return Results.Ok(new ChatResult(response.Reply, action, actionResult));
 });
 
 app.Run();
@@ -89,14 +101,7 @@ static async Task<object?> CreateTaskAsync(ChatAction action, DataAccessorClient
         meetingId = meetings[0].Id;
     }
 
-    var task = new TaskItem
-    {
-        MeetingId = meetingId,
-        Title = title,
-        AssignedTo = assignedTo
-    };
+    var task = new CreateMeetingTaskRequest(meetingId, title, assignedTo);
 
     return await data.CreateTaskAsync(task);
 }
-
-public record ChatRequest(string Message, List<AiChatEngine.Services.ChatMessage>? History);

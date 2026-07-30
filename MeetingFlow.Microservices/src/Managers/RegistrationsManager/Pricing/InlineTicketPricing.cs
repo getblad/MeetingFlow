@@ -1,16 +1,15 @@
-using RegistrationsManager.Models;
+using DataAccessor.Contracts;
 
 namespace RegistrationsManager.Pricing;
 
-// Intentionally NOT a separate Engine service. The pricing rules live inside the Manager
-// and operate on the full Meeting + Registration entities even though only TicketType,
-// Status, and StartsAt matter. Refactoring this into a real PricingEngine with a
-// narrow request shape is the bonus exercise.
 public static class InlineTicketPricing
 {
-    public static decimal CalculatePrice(Meeting meeting, Registration registration)
+    public static decimal CalculatePrice(
+        RegistrationMeetingContextDto meeting,
+        string ticketType,
+        DateTimeOffset now)
     {
-        var basePrice = registration.TicketType switch
+        var basePrice = ticketType switch
         {
             "VIP" => 499m,
             "Early Bird" => 99m,
@@ -21,7 +20,7 @@ public static class InlineTicketPricing
 
         if (meeting.Status == "Cancelled") return 0m;
 
-        var daysUntil = (meeting.StartsAt - DateTimeOffset.UtcNow).TotalDays;
+        var daysUntil = (meeting.StartsAt - now).TotalDays;
         if (daysUntil < 7) basePrice *= 1.15m;
         else if (daysUntil > 60) basePrice *= 0.90m;
 

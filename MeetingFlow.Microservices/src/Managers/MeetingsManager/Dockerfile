@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+COPY src/Contracts/ src/Contracts/
 COPY src/Managers/MeetingsManager/MeetingsManager.csproj src/Managers/MeetingsManager/
 RUN dotnet restore src/Managers/MeetingsManager/MeetingsManager.csproj
 COPY src/Managers/MeetingsManager/ src/Managers/MeetingsManager/

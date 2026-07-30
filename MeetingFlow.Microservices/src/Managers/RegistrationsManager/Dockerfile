@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+COPY src/Contracts/ src/Contracts/
 COPY src/Managers/RegistrationsManager/RegistrationsManager.csproj src/Managers/RegistrationsManager/
 RUN dotnet restore src/Managers/RegistrationsManager/RegistrationsManager.csproj
 COPY src/Managers/RegistrationsManager/ src/Managers/RegistrationsManager/

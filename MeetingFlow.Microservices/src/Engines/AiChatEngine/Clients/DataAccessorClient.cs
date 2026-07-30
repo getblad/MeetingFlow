@@ -1,37 +1,48 @@
+using DataAccessor.Contracts;
 using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace AiChatEngine.Clients;
 
 public class DataAccessorClient(HttpClient http)
 {
-    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    public async Task<IReadOnlyList<MeetingSummaryDto>> GetMeetingsAsync()
+        => await http.GetFromJsonAsync<List<MeetingSummaryDto>>("/data/meetings") ?? [];
 
-    public async Task<List<MeetingSummary>> GetMeetingsAsync()
-        => await http.GetFromJsonAsync<List<MeetingSummary>>("/data/meetings", JsonOpts) ?? [];
-
-    public async Task<MeetingSummary?> GetMeetingAsync(Guid id)
-        => await http.GetFromJsonAsync<MeetingSummary>($"/data/meetings/{id}", JsonOpts);
-
-    public async Task<List<TaskItem>> GetTasksAsync()
-        => await http.GetFromJsonAsync<List<TaskItem>>("/data/tasks", JsonOpts) ?? [];
-
-    public async Task<List<TaskItem>> GetTasksByMeetingAsync(Guid meetingId)
-        => await http.GetFromJsonAsync<List<TaskItem>>($"/data/tasks/by-meeting/{meetingId}", JsonOpts) ?? [];
-
-    public async Task<TaskItem?> CreateTaskAsync(TaskItem task)
+    public async Task<MeetingDetailsDto?> GetMeetingAsync(Guid id)
     {
-        var resp = await http.PostAsJsonAsync("/data/tasks", task);
-        return resp.IsSuccessStatusCode ? await resp.Content.ReadFromJsonAsync<TaskItem>(JsonOpts) : null;
+        var response = await http.GetAsync($"/data/meetings/{id}");
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<MeetingDetailsDto>();
     }
 
-    public async Task<TaskItem?> CompleteTaskAsync(Guid taskId)
+    public async Task<IReadOnlyList<MeetingTaskDto>> GetTasksAsync()
+        => await http.GetFromJsonAsync<List<MeetingTaskDto>>("/data/tasks") ?? [];
+
+    public async Task<IReadOnlyList<MeetingTaskDto>> GetTasksByMeetingAsync(Guid meetingId)
+        => await http.GetFromJsonAsync<List<MeetingTaskDto>>(
+            $"/data/tasks/by-meeting/{meetingId}") ?? [];
+
+    public async Task<MeetingTaskDto?> CreateTaskAsync(CreateMeetingTaskRequest request)
     {
-        var existing = await http.GetFromJsonAsync<TaskItem>($"/data/tasks/{taskId}", JsonOpts);
+        var response = await http.PostAsJsonAsync("/data/tasks", request);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<MeetingTaskDto>()
+            : null;
+    }
+
+    public async Task<MeetingTaskDto?> CompleteTaskAsync(Guid taskId)
+    {
+        var existing = await http.GetFromJsonAsync<MeetingTaskDto>($"/data/tasks/{taskId}");
         if (existing is null) return null;
-        existing.IsCompleted = true;
-        var resp = await http.PutAsJsonAsync($"/data/tasks/{taskId}", existing);
-        return resp.IsSuccessStatusCode ? await resp.Content.ReadFromJsonAsync<TaskItem>(JsonOpts) : null;
+        var update = new UpdateMeetingTaskRequest(
+            existing.Title,
+            IsCompleted: true,
+            existing.AssignedTo);
+        var response = await http.PutAsJsonAsync($"/data/tasks/{taskId}", update);
+        return response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<MeetingTaskDto>()
+            : null;
     }
 
     public async Task<bool> DeleteTaskAsync(Guid taskId)
@@ -39,25 +50,4 @@ public class DataAccessorClient(HttpClient http)
         var resp = await http.DeleteAsync($"/data/tasks/{taskId}");
         return resp.IsSuccessStatusCode;
     }
-}
-
-public class MeetingSummary
-{
-    public Guid Id { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
-    public DateTimeOffset StartsAt { get; set; }
-    public DateTimeOffset EndsAt { get; set; }
-}
-
-public class TaskItem
-{
-    public Guid Id { get; set; }
-    public Guid MeetingId { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public bool IsCompleted { get; set; }
-    public string? AssignedTo { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? CompletedAt { get; set; }
 }

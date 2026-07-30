@@ -9,4 +9,10 @@
   <ItemGroup>
     <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/DataAccessor.Contracts/DataAccessor.Contracts.csproj" />
+    <ProjectReference Include="../../Contracts/MeetingFlow.IntegrationEvents/MeetingFlow.IntegrationEvents.csproj" />
+    <ProjectReference Include="../../Contracts/RegistrationsManager.Contracts/RegistrationsManager.Contracts.csproj" />
+    <ProjectReference Include="../../Contracts/SchedulingEngine.Contracts/SchedulingEngine.Contracts.csproj" />
+  </ItemGroup>
 </Project>

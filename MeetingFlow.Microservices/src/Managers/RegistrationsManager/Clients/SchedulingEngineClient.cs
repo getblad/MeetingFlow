@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using RegistrationsManager.Models;
+using SchedulingEngine.Contracts;
 
 namespace RegistrationsManager.Clients;
 
@@ -8,15 +8,15 @@ public class SchedulingEngineClient
     readonly HttpClient _http;
     public SchedulingEngineClient(HttpClient http) => _http = http;
 
-    // Sends the entire Meeting entity to check capacity.
-    public async Task<bool> HasCapacityAsync(Meeting meeting, int venueCapacity, int currentRegistrationCount)
+    public async Task<CheckCapacityResult> CheckCapacityAsync(
+        int venueCapacity,
+        int currentRegistrationCount)
     {
-        var body = new { Meeting = meeting, VenueCapacity = venueCapacity, CurrentRegistrationCount = currentRegistrationCount };
-        var resp = await _http.PostAsJsonAsync("/scheduling/check-capacity", body);
-        resp.EnsureSuccessStatusCode();
-        var result = await resp.Content.ReadFromJsonAsync<CapacityResult>();
-        return result?.HasCapacity ?? false;
+        var response = await _http.PostAsJsonAsync(
+            "/scheduling/check-capacity",
+            new CheckCapacityRequest(venueCapacity, currentRegistrationCount));
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CheckCapacityResult>()
+            ?? throw new InvalidOperationException("SchedulingEngine returned an empty body.");
     }
-
-    record CapacityResult(bool HasCapacity, int Available, string MeetingTitle);
 }

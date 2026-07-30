@@ -1,4 +1,7 @@
 using Gateway.Clients;
+using Gateway.Contracts;
+using Gateway.Mappings;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,9 +17,9 @@ builder.Services.AddHttpClient<AiChatEngineClient>(c => c.BaseAddress = new Uri(
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
-builder.Services.ConfigureHttpJsonOptions(o =>
+builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    o.SerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
 });
 
 var app = builder.Build();
@@ -25,83 +28,102 @@ app.UseCors();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Gateway" }));
 
-// --- Meetings ---
-// Returns whatever the manager returns. No public/edge model.
-app.MapGet("/meetings", async (MeetingsManagerClient client) => Results.Ok(await client.GetAllAsync()));
+app.MapGet("/meetings", async (MeetingsManagerClient client) =>
+    Results.Ok((await client.GetAllAsync()).Select(meeting => meeting.ToPublicDto())));
 
 app.MapGet("/meetings/{id:guid}", async (Guid id, MeetingsManagerClient client) =>
+    await client.GetByIdAsync(id) is { } meeting
+        ? Results.Ok(meeting.ToPublicDto())
+        : Results.NotFound());
+
+app.MapPut("/meetings/{id:guid}", async (
+    Guid id,
+    Gateway.Contracts.UpdateMeetingRequest request,
+    MeetingsManagerClient client) =>
 {
-    var resp = await client.GetByIdRawAsync(id);
-    var content = await resp.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", statusCode: (int)resp.StatusCode);
+    var downstream = await client.UpdateAsync(
+        id,
+        new MeetingsManager.Contracts.UpdateMeetingRequest(
+            request.Title,
+            request.Description,
+            request.Status,
+            request.StartsAt,
+            request.EndsAt,
+            request.VenueId));
+
+    return downstream.IsSuccess && downstream.Value is not null
+        ? Results.Ok(downstream.Value.ToPublicDto())
+        : ToErrorResult(downstream);
 });
 
-// Public can hit admin endpoint with no auth. By design — students should add the boundary.
-app.MapGet("/admin/meetings", async (MeetingsManagerClient client) =>
-    Results.Ok(await client.GetAdminListAsync()));
-
-app.MapPut("/meetings/{id:guid}", async (Guid id, HttpRequest req, MeetingsManagerClient client) =>
-{
-    using var reader = new StreamReader(req.Body);
-    var body = await reader.ReadToEndAsync();
-    using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-    var resp = await client.UpdateRawAsync(id, content);
-    var responseBody = await resp.Content.ReadAsStringAsync();
-    return Results.Content(responseBody, "application/json", statusCode: (int)resp.StatusCode);
-});
-
-// --- Speakers ---
 app.MapGet("/speakers", async (MeetingsManagerClient client) =>
-{
-    var resp = await client.GetSpeakersRawAsync();
-    var content = await resp.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", statusCode: (int)resp.StatusCode);
-});
+    Results.Ok((await client.GetSpeakersAsync()).Select(speaker => speaker.ToPublicDto())));
 
 app.MapGet("/speakers/{id:guid}", async (Guid id, MeetingsManagerClient client) =>
-{
-    var resp = await client.GetSpeakerByIdRawAsync(id);
-    var content = await resp.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", statusCode: (int)resp.StatusCode);
-});
+    await client.GetSpeakerByIdAsync(id) is { } speaker
+        ? Results.Ok(speaker.ToPublicDto())
+        : Results.NotFound());
 
-// --- Registrations ---
-app.MapPost("/registrations", async (HttpRequest req, RegistrationsManagerClient client) =>
+app.MapPost("/registrations", async (
+    Gateway.Contracts.CreateRegistrationRequest request,
+    RegistrationsManagerClient client) =>
 {
-    using var reader = new StreamReader(req.Body);
-    var body = await reader.ReadToEndAsync();
-    using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-    var resp = await client.CreateRegistrationRawAsync(content);
-    var responseBody = await resp.Content.ReadAsStringAsync();
-    return Results.Content(responseBody, "application/json", statusCode: (int)resp.StatusCode);
+    var downstream = await client.CreateRegistrationAsync(
+        new RegistrationsManager.Contracts.CreateRegistrationRequest(
+            request.MeetingId,
+            request.AttendeeId,
+            request.TicketType));
+
+    return downstream.IsSuccess && downstream.Value is not null
+        ? Results.Created(
+            $"/registrations/{downstream.Value.Registration.Id}",
+            downstream.Value.ToPublicDto())
+        : ToErrorResult(downstream);
 });
 
 app.MapGet("/registrations/by-meeting/{meetingId:guid}", async (Guid meetingId, RegistrationsManagerClient client) =>
+    Results.Ok((await client.GetRegistrationsByMeetingAsync(meetingId))
+        .Select(registration => registration.ToPublicDto())));
+
+app.MapPost("/feedback", async (
+    Gateway.Contracts.SubmitFeedbackRequest request,
+    RegistrationsManagerClient client) =>
 {
-    var resp = await client.GetRegistrationsByMeetingRawAsync(meetingId);
-    var content = await resp.Content.ReadAsStringAsync();
-    return Results.Content(content, "application/json", statusCode: (int)resp.StatusCode);
+    var downstream = await client.CreateFeedbackAsync(
+        new RegistrationsManager.Contracts.SubmitFeedbackRequest(
+            request.MeetingId,
+            request.AttendeeId,
+            request.Rating,
+            request.Comment));
+
+    return downstream.IsSuccess && downstream.Value is not null
+        ? Results.Created(
+            $"/feedback/{downstream.Value.Id}",
+            downstream.Value.ToPublicDto())
+        : ToErrorResult(downstream);
 });
 
-app.MapPost("/feedback", async (HttpRequest req, RegistrationsManagerClient client) =>
+app.MapPost("/chat", async (
+    Gateway.Contracts.ChatRequest request,
+    AiChatEngineClient client) =>
 {
-    using var reader = new StreamReader(req.Body);
-    var body = await reader.ReadToEndAsync();
-    using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-    var resp = await client.CreateFeedbackRawAsync(content);
-    var responseBody = await resp.Content.ReadAsStringAsync();
-    return Results.Content(responseBody, "application/json", statusCode: (int)resp.StatusCode);
-});
+    var downstream = await client.ChatAsync(
+        new AiChatEngine.Contracts.ChatRequest(
+            request.Message,
+            request.History?
+                .Select(message => new AiChatEngine.Contracts.ChatMessageDto(
+                    message.Role,
+                    message.Content))
+                .ToList()));
 
-// --- AI Chat ---
-app.MapPost("/chat", async (HttpRequest req, AiChatEngineClient client) =>
-{
-    using var reader = new StreamReader(req.Body);
-    var body = await reader.ReadToEndAsync();
-    using var content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
-    var resp = await client.ChatAsync(content);
-    var responseBody = await resp.Content.ReadAsStringAsync();
-    return Results.Content(responseBody, "application/json", statusCode: (int)resp.StatusCode);
+    return downstream.IsSuccess && downstream.Value is not null
+        ? Results.Ok(downstream.Value.ToPublicDto())
+        : ToErrorResult(downstream);
 });
 
 app.Run();
+
+static IResult ToErrorResult<T>(DownstreamResult<T> downstream) =>
+    downstream.Error is { } error
+        ? Results.Json(error, statusCode: (int)downstream.StatusCode)
+        : Results.StatusCode((int)downstream.StatusCode);

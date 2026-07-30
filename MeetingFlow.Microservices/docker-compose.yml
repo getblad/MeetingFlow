@@ -124,14 +124,12 @@ services:
       ASPNETCORE_URLS: http://+:5031
       DATA_ACCESSOR_URL: http://dataaccessor:5010
       SCHEDULING_ENGINE_URL: http://scheduling-engine:5020
-      NOTIFICATIONS_ACCESSOR_URL: http://notifications-accessor:5011
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     ports:
       - "5031:5031"
     depends_on:
       - dataaccessor
       - scheduling-engine
-      - notifications-accessor
       - rabbitmq
     networks:
       - meetingflow

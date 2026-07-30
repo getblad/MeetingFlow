@@ -6,4 +6,7 @@
     <RootNamespace>SchedulingEngine</RootNamespace>
     <AssemblyName>SchedulingEngine</AssemblyName>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/SchedulingEngine.Contracts/SchedulingEngine.Contracts.csproj" />
+  </ItemGroup>
 </Project>

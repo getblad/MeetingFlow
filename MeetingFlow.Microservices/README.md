@@ -6,59 +6,46 @@ ASP.NET Core minimal-API microservices following the **IDesign method** (Manager
 
 ```
 MeetingFlow.Microservices/
-├── docker-compose.yml                          # 10 containers: Postgres, RabbitMQ, 6 services, Web
-├── infra/postgres/init.sql                     # Creates 4 Postgres schemas
+├── docker-compose.yml
+├── infra/postgres/init.sql
 │
 ├── src/
-│   ├── Gateway/                                # Public HTTP edge (Client role)
-│   │   ├── Program.cs                          # Routes requests to Managers
-│   │   ├── Clients/                            # HTTP clients for Managers + AiChatEngine
-│   │   │   ├── MeetingsManagerClient.cs
-│   │   │   ├── RegistrationsManagerClient.cs
-│   │   │   └── AiChatEngineClient.cs
-│   │   └── Models/                             # Redeclared entity models (Meeting, Registration)
+│   ├── Contracts/                              # Service-owned transport contracts
+│   │   ├── DataAccessor.Contracts/
+│   │   ├── SchedulingEngine.Contracts/
+│   │   ├── NotificationsAccessor.Contracts/
+│   │   ├── MeetingsManager.Contracts/
+│   │   ├── RegistrationsManager.Contracts/
+│   │   ├── AiChatEngine.Contracts/
+│   │   └── MeetingFlow.IntegrationEvents/      # Versioned RabbitMQ events
+│   │
+│   ├── Gateway/
+│   │   ├── Contracts/                          # Public API models
+│   │   ├── Mappings/                           # Downstream → public mapping
+│   │   └── Clients/                            # Typed Manager/Engine clients
 │   │
 │   ├── Managers/
-│   │   ├── MeetingsManager/                    # Meeting/session/speaker use cases (Manager)
-│   │   │   ├── Program.cs                      # Orchestrates DataAccessor + SchedulingEngine
-│   │   │   ├── Clients/                        # HTTP clients for DataAccessor, SchedulingEngine
-│   │   │   └── Models/                         # Redeclared entity models
-│   │   │
-│   │   └── RegistrationsManager/               # Registration + feedback use cases (Manager)
-│   │       ├── Program.cs                      # Orchestrates DataAccessor + SchedulingEngine + Notifications
-│   │       ├── Clients/                        # HTTP clients for DataAccessor, SchedulingEngine, Notifications
-│   │       ├── Models/                         # Redeclared entity models
-│   │       ├── Pricing/                        # Inline ticket pricing logic
-│   │       └── Messaging/                      # RabbitMQ event publisher
+│   │   ├── MeetingsManager/
+│   │   │   ├── Clients/
+│   │   │   └── Mappings/
+│   │   └── RegistrationsManager/
+│   │       ├── Clients/
+│   │       ├── Mappings/
+│   │       ├── Pricing/
+│   │       └── Messaging/
 │   │
 │   ├── Engines/
-│   │   ├── SchedulingEngine/                   # Pure conflict + capacity logic, no DB (Engine)
-│   │   │   ├── Program.cs                      # Stateless scheduling checks
-│   │   │   └── Models/                         # Redeclared entity models (Session, Meeting)
-│   │   │
-│   │   └── AiChatEngine/                       # AI-powered chat assistant (Engine)
-│   │       ├── Program.cs                      # Chat endpoint with action execution
-│   │       ├── Clients/                        # HTTP client for DataAccessor
-│   │       └── Services/                       # OpenAI + rule-based chat implementations
+│   │   ├── SchedulingEngine/                   # Narrow stateless contracts
+│   │   └── AiChatEngine/
 │   │
 │   ├── Accessors/
-│   │   ├── DataAccessor/                       # EF Core over meetings/registrations/feedback (Resource Accessor)
-│   │   │   ├── Program.cs                      # CRUD endpoints for all data
-│   │   │   ├── Data/                           # DbContext + SeedData
-│   │   │   ├── Models/                         # Canonical entity models
-│   │   │   └── Repositories/                   # Repository pattern over EF Core
-│   │   │
-│   │   └── NotificationsAccessor/              # Notifications schema + fake SMTP (Resource Accessor)
-│   │       ├── Program.cs                      # Notification CRUD + send endpoint
-│   │       ├── Data/                           # DbContext + SeedData
-│   │       ├── Models/                         # Redeclared Attendee, Meeting, Notification
-│   │       ├── Infrastructure/                 # FakeSmtpGateway
-│   │       └── Messaging/                      # RabbitMQ event consumer
+│   │   ├── DataAccessor/
+│   │   │   ├── Models/                         # EF entities; never cross HTTP
+│   │   │   ├── Mappings/
+│   │   │   └── Repositories/
+│   │   └── NotificationsAccessor/
 │   │
-│   └── Web/                                    # Static frontend served by nginx
-│       ├── Dockerfile
-│       ├── index.html
-│       └── nginx.conf
+│   └── Web/
 ```
 
 ### IDesign Roles
@@ -75,7 +62,7 @@ MeetingFlow.Microservices/
 
 ### Tech Stack
 
-- **ASP.NET Core 9** — Minimal APIs in each service
+- **ASP.NET Core 10** — Minimal APIs in each service
 - **EF Core** — Npgsql (Postgres) provider
 - **PostgreSQL 16** — shared instance with 4 schemas
 - **RabbitMQ** — async event publishing (registration.created)
@@ -94,14 +81,26 @@ graph LR
     MeetingsManager --> SchedulingEngine
     RegistrationsManager --> DataAccessor
     RegistrationsManager --> SchedulingEngine
-    RegistrationsManager --> NotificationsAccessor
-    RegistrationsManager -->|RabbitMQ| NotificationsAccessor
+    RegistrationsManager -->|registration.created.v1| RabbitMQ
+    RabbitMQ --> NotificationsAccessor
     AiChatEngine --> DataAccessor
     DataAccessor --> Postgres[(Postgres)]
     NotificationsAccessor --> Postgres[(Postgres)]
 ```
 
-All inter-service communication is **synchronous HTTP** (via typed `HttpClient`s), except `RegistrationsManager → NotificationsAccessor` which also publishes a `registration.created` event to **RabbitMQ**.
+Synchronous integrations use typed `HttpClient`s and service-owned contract
+packages. Registration notifications are asynchronous only:
+`RegistrationsManager` publishes `registration.created.v1`, and
+`NotificationsAccessor` consumes it from RabbitMQ.
+
+### Contract boundaries
+
+- EF Core entities exist only inside their owning Accessor.
+- Each HTTP provider owns a small contract project consumed by its callers.
+- Managers map downstream DTOs into use-case DTOs.
+- Gateway maps Manager/Engine DTOs into separate public API models.
+- Public write models contain only client-controlled fields.
+- RabbitMQ events are versioned independently from HTTP contracts.
 
 ## Database Schemas
 
@@ -118,18 +117,17 @@ Tables are created by EF Core `EnsureCreated()` at service startup. Seed data is
 
 ## Public REST Endpoints (Gateway, port 8080)
 
-| Method | Path                                    | Description                                   |
-| ------ | --------------------------------------- | --------------------------------------------- |
-| GET    | `/meetings`                             | List meetings (full entity graph)             |
-| GET    | `/meetings/{id}`                        | Meeting details with sessions/registrations   |
-| PUT    | `/meetings/{id}`                        | Update meeting (accepts full entity)          |
-| GET    | `/admin/meetings`                       | Admin view — no auth, exposes internal fields |
-| GET    | `/speakers`                             | List all speakers                             |
-| GET    | `/speakers/{id}`                        | Speaker profile including email and phone     |
-| POST   | `/registrations`                        | Create registration (accepts full entity)     |
-| GET    | `/registrations/by-meeting/{meetingId}` | Registrations with full attendee data         |
-| POST   | `/feedback`                             | Submit feedback (accepts full entity)         |
-| POST   | `/chat`                                 | AI chat with action execution                 |
+| Method | Path                                    | Description                                      |
+| ------ | --------------------------------------- | ------------------------------------------------ |
+| GET    | `/meetings`                             | Public meeting summaries                         |
+| GET    | `/meetings/{id}`                        | Public details, sessions and aggregate statistics |
+| PUT    | `/meetings/{id}`                        | Update client-controlled meeting fields          |
+| GET    | `/speakers`                             | Public speaker profiles without contact data     |
+| GET    | `/speakers/{id}`                        | Public speaker details                           |
+| POST   | `/registrations`                        | Create registration from meeting/attendee/ticket |
+| GET    | `/registrations/by-meeting/{meetingId}` | Safe registration summaries                      |
+| POST   | `/feedback`                             | Submit rating and comment                        |
+| POST   | `/chat`                                 | AI chat with action execution                    |
 
 Individual services also expose their own ports for debugging: DataAccessor (`5010`), NotificationsAccessor (`5011`), SchedulingEngine (`5020`), MeetingsManager (`5030`), RegistrationsManager (`5031`), AiChatEngine (`5040`).
 
@@ -139,48 +137,52 @@ Individual services also expose their own ports for debugging: DataAccessor (`50
 
 `Browser → Gateway GET /meetings → MeetingsManager GET /meetings → DataAccessor GET /data/meetings → Postgres`
 
-The DataAccessor loads `Meetings` with Venue and Sessions via EF Core. The full entity graph passes unchanged through every layer back to the browser.
+DataAccessor projects EF data into `MeetingSummaryDto`. MeetingsManager maps it
+into its use-case list model, and Gateway maps that into the public response.
 
 ### 2. Create Registration
 
 ```
 Browser → Gateway POST /registrations
   → RegistrationsManager POST /registrations
-    → DataAccessor GET /data/meetings/{id}          (fetch meeting for capacity)
-    → DataAccessor GET /data/attendees/{id}         (fetch attendee)
-    → DataAccessor GET /data/registrations/by-meeting/{id}  (count existing)
-    → SchedulingEngine POST /scheduling/check-capacity      (verify room)
-    → InlineTicketPricing.CalculatePrice(meeting, registration)
-    → DataAccessor POST /data/registrations         (persist)
-    → RabbitMQ publish "registration.created"        (async event)
-    → NotificationsAccessor POST /notifications/send (direct call)
+    → DataAccessor GET /data/meetings/{id}/registration-context
+    → DataAccessor GET /data/attendees/{id}/contact
+    → DataAccessor GET /data/registrations/by-meeting/{id}
+    → SchedulingEngine POST /scheduling/check-capacity
+    → InlineTicketPricing.CalculatePrice(context, ticketType, now)
+    → DataAccessor POST /data/registrations
+    → RabbitMQ publish "registration.created.v1"
+      → NotificationsAccessor persists and sends one notification
 ```
 
-The RegistrationsManager orchestrates 5+ downstream calls, passes full entity objects between services, runs inline pricing, publishes an event, and calls notifications directly.
+The public request cannot set registration ID, timestamps, payment status or
+internal payment references. DataAccessor owns those server-controlled values.
 
 ### 3. Submit Feedback
 
 `Browser → Gateway POST /feedback → RegistrationsManager POST /feedback → DataAccessor POST /data/feedback → Postgres`
 
-Accepts the full `Feedback` entity including `ModerationNotes`.
+The request contains only meeting ID, attendee ID, rating and comment.
 
 ### 4. Schedule Conflict Check
 
 `MeetingsManager POST /meetings/{id}/sessions/check → DataAccessor GET /data/meetings/{id}/sessions → SchedulingEngine POST /scheduling/check-conflict`
 
-The SchedulingEngine receives full `Session` entities but only uses `RoomName`, `StartsAt`, `EndsAt`.
+SchedulingEngine receives `SessionSlotDto` values containing only ID, room and
+time range.
 
 ### 5. Capacity Check
 
 `RegistrationsManager → SchedulingEngine POST /scheduling/check-capacity`
 
-Receives a `CapacityCheckCommand` with a full `Meeting` entity, venue capacity int, and current registration count int — only the two ints are actually needed.
+Receives only venue capacity and current registration count.
 
-### 6. Send Notification
+### 6. Send Registration Notification
 
-`RegistrationsManager → NotificationsAccessor POST /notifications/send`
+`RegistrationsManager → RabbitMQ registration.created.v1 → NotificationsAccessor`
 
-Receives a `SendNotificationCommand` with complete `Attendee` and `Meeting` entities just to extract email and title.
+The versioned event carries the registration identity and the minimum recipient
+and meeting data required to compose the notification.
 
 ### 7. AI Chat
 
@@ -198,15 +200,11 @@ Postgres starts first (with a healthcheck), then accessors, engine, managers, an
 
 The web UI is available at `http://localhost:3000`, the Gateway API at `http://localhost:8080`.
 
-## What's Intentionally Wrong
+## Deliberate scope
 
-- Each service redeclares its own `Meeting`, `Session`, `Attendee`, `Registration` — drift is silent
-- EF Core entities are returned directly from every service, all the way to the public gateway
-- Internal fields (`InternalNotes`, `AdminOnlyCode`, `InternalPaymentReference`, `RawPayloadJson`) leak to the public HTTP response
-- `POST /registrations` accepts the full entity, letting the client set `PaymentStatus` and `InternalPaymentReference`
-- `SchedulingEngine` and `NotificationsAccessor` receive full entities when they only need a few fields
-- `RegistrationsManager` runs inline pricing logic on a full `Meeting` it fetched just for capacity
-- The Gateway is a passthrough — no edge models, no response shaping
-- `/admin/meetings` is reachable without authentication
-- No payload versioning between services
-- No shared contracts library
+- The internal MeetingsManager admin endpoint is not exposed by Gateway because
+  this sample does not yet include authentication.
+- Contract projects represent service-owned packages in this monorepo. In
+  independently deployed repositories they would be versioned packages.
+- Database migrations, message idempotency and transactional outbox behavior are
+  separate production concerns and useful follow-up exercises.

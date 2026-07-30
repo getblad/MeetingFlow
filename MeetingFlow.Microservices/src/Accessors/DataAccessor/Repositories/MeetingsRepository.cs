@@ -12,7 +12,6 @@ public class MeetingsRepository
     public Task<List<Meeting>> GetAllAsync() =>
         _db.Meetings
             .Include(m => m.Venue)
-            .Include(m => m.Sessions).ThenInclude(s => s.Speaker)
             .ToListAsync();
 
     public Task<Meeting?> GetByIdAsync(Guid id) =>
@@ -23,19 +22,33 @@ public class MeetingsRepository
             .Include(m => m.Feedback).ThenInclude(f => f.Attendee)
             .FirstOrDefaultAsync(m => m.Id == id);
 
-    public async Task<Meeting> UpsertAsync(Meeting meeting)
+    public Task<Meeting?> GetRegistrationContextAsync(Guid id) =>
+        _db.Meetings
+            .Include(meeting => meeting.Venue)
+            .FirstOrDefaultAsync(meeting => meeting.Id == id);
+
+    public async Task<Meeting?> UpdateAsync(
+        Guid id,
+        string title,
+        string description,
+        string status,
+        DateTimeOffset startsAt,
+        DateTimeOffset endsAt,
+        Guid venueId)
     {
-        var existing = await _db.Meetings.FirstOrDefaultAsync(m => m.Id == meeting.Id);
-        if (existing is null)
-        {
-            _db.Meetings.Add(meeting);
-        }
-        else
-        {
-            _db.Entry(existing).CurrentValues.SetValues(meeting);
-        }
+        var existing = await _db.Meetings.FirstOrDefaultAsync(m => m.Id == id);
+        if (existing is null) return null;
+
+        existing.Title = title;
+        existing.Description = description;
+        existing.Status = status;
+        existing.StartsAt = startsAt;
+        existing.EndsAt = endsAt;
+        existing.VenueId = venueId;
+        existing.UpdatedAt = DateTimeOffset.UtcNow;
+
         await _db.SaveChangesAsync();
-        return meeting;
+        return await GetByIdAsync(id);
     }
 
     public Task<List<Session>> GetSessionsByMeetingAsync(Guid meetingId) =>

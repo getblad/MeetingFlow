@@ -1,5 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+COPY src/Contracts/ src/Contracts/
 COPY src/Accessors/NotificationsAccessor/NotificationsAccessor.csproj src/Accessors/NotificationsAccessor/
 RUN dotnet restore src/Accessors/NotificationsAccessor/NotificationsAccessor.csproj
 COPY src/Accessors/NotificationsAccessor/ src/Accessors/NotificationsAccessor/

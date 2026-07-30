@@ -1,6 +1,9 @@
+using DataAccessor.Contracts;
+using MeetingFlow.IntegrationEvents;
 using RegistrationsManager.Clients;
+using RegistrationsManager.Contracts;
+using RegistrationsManager.Mappings;
 using RegistrationsManager.Messaging;
-using RegistrationsManager.Models;
 using RegistrationsManager.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,79 +14,122 @@ var dataAccessorUrl = builder.Configuration["DATA_ACCESSOR_URL"]
 var schedulingEngineUrl = builder.Configuration["SCHEDULING_ENGINE_URL"]
     ?? Environment.GetEnvironmentVariable("SCHEDULING_ENGINE_URL")
     ?? "http://localhost:5020";
-var notificationsAccessorUrl = builder.Configuration["NOTIFICATIONS_ACCESSOR_URL"]
-    ?? Environment.GetEnvironmentVariable("NOTIFICATIONS_ACCESSOR_URL")
-    ?? "http://localhost:5011";
 var rabbitUrl = builder.Configuration["RABBITMQ_URL"]
     ?? Environment.GetEnvironmentVariable("RABBITMQ_URL")
     ?? "amqp://guest:guest@localhost:5672";
 
 builder.Services.AddHttpClient<DataAccessorClient>(c => c.BaseAddress = new Uri(dataAccessorUrl));
 builder.Services.AddHttpClient<SchedulingEngineClient>(c => c.BaseAddress = new Uri(schedulingEngineUrl));
-builder.Services.AddHttpClient<NotificationsAccessorClient>(c => c.BaseAddress = new Uri(notificationsAccessorUrl));
-builder.Services.AddSingleton(sp => EventPublisher.CreateAsync(rabbitUrl).GetAwaiter().GetResult());
-
-builder.Services.ConfigureHttpJsonOptions(o =>
-{
-    o.SerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-});
+builder.Services.AddSingleton<IEventPublisher>(
+    _ => EventPublisher.CreateAsync(rabbitUrl).GetAwaiter().GetResult());
+builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "RegistrationsManager" }));
 
 app.MapGet("/registrations/by-meeting/{meetingId:guid}", async (Guid meetingId, DataAccessorClient data) =>
-    Results.Ok(await data.GetRegistrationsForMeetingAsync(meetingId)));
+    Results.Ok((await data.GetRegistrationsForMeetingAsync(meetingId))
+        .Select(registration => registration.ToManagerDto())));
 
-// Accepts the FULL Registration entity from the caller — including PaymentStatus
-// and InternalPaymentReference which the client should never control.
 app.MapPost("/registrations", async (
-    Registration body,
+    CreateRegistrationRequest request,
     DataAccessorClient data,
     SchedulingEngineClient scheduling,
-    NotificationsAccessorClient notifications,
-    EventPublisher eventPublisher) =>
+    IEventPublisher eventPublisher,
+    TimeProvider timeProvider) =>
 {
-    var meeting = await data.GetMeetingAsync(body.MeetingId);
+    var allowedTicketTypes = new[] { "VIP", "Early Bird", "Student", "General" };
+    if (request.MeetingId == Guid.Empty
+        || request.AttendeeId == Guid.Empty
+        || !allowedTicketTypes.Contains(request.TicketType, StringComparer.OrdinalIgnoreCase))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["registration"] =
+            [
+                "MeetingId, AttendeeId and a supported TicketType are required."
+            ]
+        });
+    }
+
+    var meeting = await data.GetRegistrationContextAsync(request.MeetingId);
     if (meeting is null) return Results.NotFound(new { error = "Meeting not found" });
 
-    var attendee = await data.GetAttendeeAsync(body.AttendeeId);
+    var attendee = await data.GetAttendeeContactAsync(request.AttendeeId);
     if (attendee is null) return Results.NotFound(new { error = "Attendee not found" });
 
-    var capacity = meeting.Venue?.Capacity ?? 0;
-    var current = (await data.GetRegistrationsForMeetingAsync(body.MeetingId)).Count;
-    var hasCapacity = await scheduling.HasCapacityAsync(meeting, capacity, current);
-    if (!hasCapacity) return Results.Conflict(new { error = "Meeting is at capacity" });
-
-    var price = InlineTicketPricing.CalculatePrice(meeting, body);
-
-    if (body.Id == Guid.Empty) body.Id = Guid.NewGuid();
-    if (body.RegisteredAt == default) body.RegisteredAt = DateTimeOffset.UtcNow;
-
-    var saved = await data.CreateRegistrationAsync(body);
-
-    // Publish event to RabbitMQ — NotificationsAccessor subscribes to this.
-    await eventPublisher.PublishAsync("registration.created", new RegistrationCreatedEvent(
-        saved!.Id, meeting.Id, attendee.Id,
-        meeting.Title, attendee.Email, body.RegisteredAt));
-
-    // Also still call notifications directly (existing behavior kept for now).
-    await notifications.SendRegistrationConfirmationAsync(attendee, meeting);
-
-    return Results.Created($"/registrations/{saved!.Id}", new
+    var existing = await data.GetRegistrationsForMeetingAsync(request.MeetingId);
+    if (existing.Any(registration => registration.AttendeeId == request.AttendeeId))
     {
-        registration = saved,
-        calculatedPrice = price
-    });
+        return Results.Conflict(new { error = "Attendee is already registered" });
+    }
+
+    var capacity = await scheduling.CheckCapacityAsync(
+        meeting.VenueCapacity,
+        existing.Count);
+    if (!capacity.HasCapacity)
+    {
+        return Results.Conflict(new { error = "Meeting is at capacity" });
+    }
+
+    var normalizedTicketType = allowedTicketTypes.First(type =>
+        type.Equals(request.TicketType, StringComparison.OrdinalIgnoreCase));
+    var price = InlineTicketPricing.CalculatePrice(
+        meeting,
+        normalizedTicketType,
+        timeProvider.GetUtcNow());
+
+    var saved = await data.CreateRegistrationAsync(new PersistRegistrationRequest(
+        request.MeetingId,
+        request.AttendeeId,
+        normalizedTicketType));
+
+    await eventPublisher.PublishAsync(
+        "registration.created.v1",
+        new RegistrationCreatedV1(
+            Guid.NewGuid(),
+            saved.Id,
+            meeting.Id,
+            attendee.Id,
+            meeting.Title,
+            attendee.FullName,
+            attendee.Email,
+            saved.RegisteredAt));
+
+    return Results.Created(
+        $"/registrations/{saved.Id}",
+        new CreateRegistrationResult(saved.ToManagerDto(), price));
 });
 
-// Accepts the FULL Feedback entity — including ModerationNotes a client can set.
-app.MapPost("/feedback", async (Feedback body, DataAccessorClient data) =>
+app.MapPost("/feedback", async (SubmitFeedbackRequest request, DataAccessorClient data) =>
 {
-    if (body.Id == Guid.Empty) body.Id = Guid.NewGuid();
-    if (body.CreatedAt == default) body.CreatedAt = DateTimeOffset.UtcNow;
-    var saved = await data.CreateFeedbackAsync(body);
-    return Results.Created($"/feedback/{saved!.Id}", saved);
+    if (request.MeetingId == Guid.Empty
+        || request.AttendeeId == Guid.Empty
+        || request.Rating is < 1 or > 5
+        || string.IsNullOrWhiteSpace(request.Comment))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["feedback"] =
+            [
+                "MeetingId, AttendeeId, a rating from 1 to 5 and a comment are required."
+            ]
+        });
+    }
+
+    if (await data.GetRegistrationContextAsync(request.MeetingId) is null)
+        return Results.NotFound(new { error = "Meeting not found" });
+    if (await data.GetAttendeeContactAsync(request.AttendeeId) is null)
+        return Results.NotFound(new { error = "Attendee not found" });
+
+    var saved = await data.CreateFeedbackAsync(new PersistFeedbackRequest(
+        request.MeetingId,
+        request.AttendeeId,
+        request.Rating,
+        request.Comment.Trim()));
+
+    return Results.Created($"/feedback/{saved.Id}", saved.ToManagerDto());
 });
 
 app.Run();

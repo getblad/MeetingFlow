@@ -1,36 +1,47 @@
-using SchedulingEngine.Models;
+using SchedulingEngine.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "SchedulingEngine" }));
 
-// Pure logic. Receives the candidate session AND the list of already-scheduled sessions
-// in the room. Each one is sent as a full Session entity even though only time/room is used.
-app.MapPost("/scheduling/check-conflict", (ConflictCheckCommand cmd) =>
+app.MapPost("/scheduling/check-conflict", (CheckConflictRequest request) =>
 {
-    var hasConflict = cmd.Existing.Any(s =>
-        s.Id != cmd.Candidate.Id &&
-        s.RoomName.Equals(cmd.Candidate.RoomName, StringComparison.OrdinalIgnoreCase) &&
-        s.StartsAt < cmd.Candidate.EndsAt &&
-        s.EndsAt > cmd.Candidate.StartsAt);
-    return Results.Ok(new { conflict = hasConflict });
+    if (string.IsNullOrWhiteSpace(request.Candidate.RoomName)
+        || request.Candidate.StartsAt >= request.Candidate.EndsAt)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["candidate"] = ["RoomName is required and StartsAt must be before EndsAt."]
+        });
+    }
+
+    var hasConflict = request.Existing.Any(session =>
+        session.Id != request.Candidate.Id
+        && session.RoomName.Equals(
+            request.Candidate.RoomName,
+            StringComparison.OrdinalIgnoreCase)
+        && session.StartsAt < request.Candidate.EndsAt
+        && session.EndsAt > request.Candidate.StartsAt);
+
+    return Results.Ok(new CheckConflictResult(hasConflict));
 });
 
-// Capacity check. Manager sends the full Meeting entity plus venue capacity plus
-// the current registration count even though only the last two numbers are needed.
-app.MapPost("/scheduling/check-capacity", (CapacityCheckCommand cmd) =>
+app.MapPost("/scheduling/check-capacity", (CheckCapacityRequest request) =>
 {
-    var available = cmd.VenueCapacity - cmd.CurrentRegistrationCount;
-    return Results.Ok(new
+    if (request.VenueCapacity < 0 || request.CurrentRegistrationCount < 0)
     {
-        hasCapacity = available > 0,
-        available,
-        meetingTitle = cmd.Meeting.Title
-    });
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["capacity"] = ["Capacity and registration count cannot be negative."]
+        });
+    }
+
+    var available = Math.Max(
+        0,
+        request.VenueCapacity - request.CurrentRegistrationCount);
+
+    return Results.Ok(new CheckCapacityResult(available > 0, available));
 });
 
 app.Run();
-
-public record ConflictCheckCommand(Session Candidate, List<Session> Existing);
-public record CapacityCheckCommand(Meeting Meeting, int VenueCapacity, int CurrentRegistrationCount);

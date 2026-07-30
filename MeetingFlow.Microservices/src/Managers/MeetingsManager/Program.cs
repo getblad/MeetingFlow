@@ -1,5 +1,7 @@
 using MeetingsManager.Clients;
-using MeetingsManager.Models;
+using MeetingsManager.Contracts;
+using MeetingsManager.Mappings;
+using SchedulingEngine.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,47 +15,85 @@ var schedulingEngineUrl = builder.Configuration["SCHEDULING_ENGINE_URL"]
 builder.Services.AddHttpClient<DataAccessorClient>(c => c.BaseAddress = new Uri(dataAccessorUrl));
 builder.Services.AddHttpClient<SchedulingEngineClient>(c => c.BaseAddress = new Uri(schedulingEngineUrl));
 
-builder.Services.ConfigureHttpJsonOptions(o =>
-{
-    o.SerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-});
-
 var app = builder.Build();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "MeetingsManager" }));
 
-// Public meeting list — returns whatever the accessor returned, untouched.
 app.MapGet("/meetings", async (DataAccessorClient data) =>
-    Results.Ok(await data.GetAllMeetingsAsync()));
+    Results.Ok((await data.GetAllMeetingsAsync()).Select(meeting => meeting.ToManagerDto())));
 
-// Meeting details — returns the full entity graph including registrations and feedback.
 app.MapGet("/meetings/{id:guid}", async (Guid id, DataAccessorClient data) =>
-    await data.GetMeetingAsync(id) is { } m ? Results.Ok(m) : Results.NotFound());
+    await data.GetMeetingAsync(id) is { } meeting
+        ? Results.Ok(meeting.ToManagerDto())
+        : Results.NotFound());
 
-// Admin meeting list — exact same payload as /meetings; intentionally no admin/public split.
 app.MapGet("/admin/meetings", async (DataAccessorClient data) =>
-    Results.Ok(await data.GetAllMeetingsAsync()));
+    Results.Ok((await data.GetAdminMeetingsAsync()).Select(meeting => meeting.ToManagerDto())));
 
-// Update meeting — accepts the full Meeting entity from the caller.
-app.MapPut("/meetings/{id:guid}", async (Guid id, Meeting body, DataAccessorClient data) =>
+app.MapPut("/meetings/{id:guid}", async (
+    Guid id,
+    UpdateMeetingRequest body,
+    DataAccessorClient data) =>
 {
-    var saved = await data.UpdateMeetingAsync(id, body);
-    return saved is null ? Results.NotFound() : Results.Ok(saved);
+    if (string.IsNullOrWhiteSpace(body.Title) || body.StartsAt >= body.EndsAt)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["meeting"] = ["Title is required and StartsAt must be before EndsAt."]
+        });
+    }
+
+    var request = new DataAccessor.Contracts.UpdateMeetingRequest(
+        body.Title,
+        body.Description,
+        body.Status,
+        body.StartsAt,
+        body.EndsAt,
+        body.VenueId);
+    var saved = await data.UpdateMeetingAsync(id, request);
+    return saved is null ? Results.NotFound() : Results.Ok(saved.ToManagerDto());
 });
 
-// Add session — calls the SchedulingEngine with the FULL session entity for conflict check.
 app.MapPost("/meetings/{meetingId:guid}/sessions/check", async (
-    Guid meetingId, Session candidate,
-    DataAccessorClient data, SchedulingEngineClient scheduling) =>
+    Guid meetingId,
+    CheckSessionConflictRequest candidate,
+    DataAccessorClient data,
+    SchedulingEngineClient scheduling) =>
 {
+    if (string.IsNullOrWhiteSpace(candidate.RoomName)
+        || candidate.StartsAt >= candidate.EndsAt)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["session"] = ["RoomName is required and StartsAt must be before EndsAt."]
+        });
+    }
+
     var existing = await data.GetSessionsForMeetingAsync(meetingId);
-    var conflict = await scheduling.HasConflictAsync(candidate, existing);
-    return Results.Ok(new { conflict, existingCount = existing.Count });
+    var candidateSlot = new SessionSlotDto(
+        candidate.SessionId,
+        candidate.RoomName,
+        candidate.StartsAt,
+        candidate.EndsAt);
+    var existingSlots = existing
+        .Select(session => new SessionSlotDto(
+            session.Id,
+            session.RoomName,
+            session.StartsAt,
+            session.EndsAt))
+        .ToList();
+    var result = await scheduling.CheckConflictAsync(candidateSlot, existingSlots);
+
+    return Results.Ok(new CheckSessionConflictResult(
+        result.HasConflict,
+        existing.Count));
 });
 
-// Speakers — return full Speaker entity including Email, Phone, InternalNotes.
-app.MapGet("/speakers", async (DataAccessorClient data) => Results.Ok(await data.GetSpeakersAsync()));
+app.MapGet("/speakers", async (DataAccessorClient data) =>
+    Results.Ok((await data.GetSpeakersAsync()).Select(speaker => speaker.ToManagerDto())));
 app.MapGet("/speakers/{id:guid}", async (Guid id, DataAccessorClient data) =>
-    await data.GetSpeakerAsync(id) is { } s ? Results.Ok(s) : Results.NotFound());
+    await data.GetSpeakerAsync(id) is { } speaker
+        ? Results.Ok(speaker.ToManagerDto())
+        : Results.NotFound());
 
 app.Run();

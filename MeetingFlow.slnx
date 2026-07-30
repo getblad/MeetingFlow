@@ -5,6 +5,13 @@
   <Project Path="MeetingFlow.Monolith/MeetingFlow.Monolith.csproj" />
   <Project Path="MeetingFlow.Monolith.Tests/MeetingFlow.Monolith.Tests.csproj" />
   <Folder Name="/MeetingFlow.Microservices/">
+    <Project Path="MeetingFlow.Microservices/src/Contracts/DataAccessor.Contracts/DataAccessor.Contracts.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Contracts/SchedulingEngine.Contracts/SchedulingEngine.Contracts.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Contracts/NotificationsAccessor.Contracts/NotificationsAccessor.Contracts.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Contracts/MeetingsManager.Contracts/MeetingsManager.Contracts.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Contracts/RegistrationsManager.Contracts/RegistrationsManager.Contracts.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Contracts/AiChatEngine.Contracts/AiChatEngine.Contracts.csproj" />
+    <Project Path="MeetingFlow.Microservices/src/Contracts/MeetingFlow.IntegrationEvents/MeetingFlow.IntegrationEvents.csproj" />
     <Project Path="MeetingFlow.Microservices/src/Gateway/Gateway.csproj" />
     <Project Path="MeetingFlow.Microservices/src/Managers/MeetingsManager/MeetingsManager.csproj" />
     <Project Path="MeetingFlow.Microservices/src/Managers/RegistrationsManager/RegistrationsManager.csproj" />
