@@ -50,3 +50,24 @@ connection string as `POSTGRES_CONN`, and then creates the HTTP client. The
 normal DataAccessor startup code creates the EF Core schema and seed data in
 that database. After the class finishes, Testcontainers removes the container
 and its data.
+
+## RegistrationsManager component tests
+
+The real RegistrationsManager runs through `WebApplicationFactory`. Its external
+dependencies are controlled test doubles:
+
+- WireMock.Net HTTP stub for DataAccessor;
+- WireMock.Net HTTP stub for SchedulingEngine;
+- in-memory spy implementing `IEventPublisher` instead of RabbitMQ;
+- fixed `TimeProvider` for deterministic pricing.
+
+Run from the repository root (Docker is not required):
+
+```bash
+dotnet test MeetingFlow.Microservices/tests/MeetingFlow.RegistrationsManager.ComponentTests/MeetingFlow.RegistrationsManager.ComponentTests.csproj
+```
+
+The stubs return only responses configured by each scenario. An unexpected
+downstream call receives no successful stub response and fails the test. This
+lets the suite verify Manager orchestration and early exits without starting
+DataAccessor, SchedulingEngine, PostgreSQL or RabbitMQ.
