@@ -45,3 +45,7 @@ app.MapPost("/scheduling/check-capacity", (CheckCapacityRequest request) =>
 });
 
 app.Run();
+
+// WebApplicationFactory uses this entry point to start the complete HTTP
+// component in the test process.
+public partial class Program { }

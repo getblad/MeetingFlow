@@ -1,11 +1,27 @@
 # MeetingFlow microservices tests
 
-This directory is intentionally kept as a clean starting point for the
-components and integration tests lecture.
+This directory contains examples for the components and integration tests
+lecture. The examples are added incrementally so each test boundary remains
+visible.
 
 Planned test-suite boundaries:
 
-- `MeetingFlow.ComponentTests` — one deployable service is the system under test.
+- `MeetingFlow.SchedulingEngine.ComponentTests` — starts the complete
+  SchedulingEngine HTTP application in the test process with
+  `WebApplicationFactory`.
 - `MeetingFlow.IntegrationTests` — a specific integration between real components.
 
-Exercise implementations are not included in the starter repository.
+## SchedulingEngine component tests
+
+Install/restore the test dependencies and run the project from the repository
+root:
+
+```bash
+dotnet restore MeetingFlow.Microservices/tests/MeetingFlow.SchedulingEngine.ComponentTests/MeetingFlow.SchedulingEngine.ComponentTests.csproj
+dotnet test MeetingFlow.Microservices/tests/MeetingFlow.SchedulingEngine.ComponentTests/MeetingFlow.SchedulingEngine.ComponentTests.csproj
+```
+
+`WebApplicationFactory<Program>` boots the real Minimal API with an in-memory
+test server. Requests still pass through ASP.NET Core routing, JSON
+serialization, model binding, validation endpoints and response serialization,
+but no TCP port, Docker container or external service is required.
