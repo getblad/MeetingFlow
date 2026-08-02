@@ -176,3 +176,7 @@ app.MapDelete("/data/tasks/{id:guid}", async (Guid id, MeetingTasksRepository r)
     await r.DeleteAsync(id) ? Results.NoContent() : Results.NotFound());
 
 app.Run();
+
+// WebApplicationFactory uses this entry point to start the complete HTTP
+// component in the test process.
+public partial class Program { }

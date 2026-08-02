@@ -19,5 +19,6 @@
     <Project Path="MeetingFlow.Microservices/src/Accessors/DataAccessor/DataAccessor.csproj" />
     <Project Path="MeetingFlow.Microservices/src/Accessors/NotificationsAccessor/NotificationsAccessor.csproj" />
     <Project Path="MeetingFlow.Microservices/tests/MeetingFlow.SchedulingEngine.ComponentTests/MeetingFlow.SchedulingEngine.ComponentTests.csproj" />
+    <Project Path="MeetingFlow.Microservices/tests/MeetingFlow.DataAccessor.ComponentTests/MeetingFlow.DataAccessor.ComponentTests.csproj" />
   </Folder>
 </Solution>
