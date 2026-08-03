@@ -4,13 +4,14 @@ using MeetingFlow.IntegrationEvents;
 using NotificationsAccessor.Contracts;
 using Xunit;
 
-namespace MeetingFlow.Microservices.IntegrationTests;
+namespace MeetingFlow.Microservices.IntegrationTests.RegistrationNotifications;
 
 public sealed class RegistrationNotificationsIntegrationTests(
     RegistrationNotificationsFixture fixture)
     : IClassFixture<RegistrationNotificationsFixture>
 {
     [Fact]
+    [Trait("Category", "Integration")]
     public async Task RegistrationCreatedEvent_IsDeliveredAndPersistedAsNotification()
     {
         // Arrange

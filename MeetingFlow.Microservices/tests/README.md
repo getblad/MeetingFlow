@@ -98,3 +98,34 @@ The fixture waits until RabbitMQ reports an active consumer before publishing.
 After publishing, the test polls the NotificationsAccessor HTTP API with a
 bounded timeout because message delivery is asynchronous. Fixed sleeps are not
 used for synchronization.
+
+## Backend system integration test
+
+The system test starts a fresh, isolated Docker Compose project and enters only
+through the public Gateway API:
+
+```text
+test -> Gateway -> RegistrationsManager -> DataAccessor -> PostgreSQL
+                       |-> SchedulingEngine
+                       `-> RabbitMQ -> NotificationsAccessor -> PostgreSQL
+```
+
+The fixture builds and starts the complete Compose stack with a unique project
+name, a clean database and dynamically assigned host ports. It waits for every
+backend health endpoint and for the RabbitMQ notification consumer. After the
+test, `docker compose down --volumes --remove-orphans` removes the stack.
+
+Run only this slow system test:
+
+```bash
+dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj --filter Category=System
+```
+
+Run only the targeted RabbitMQ integration test:
+
+```bash
+dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj --filter Category=Integration
+```
+
+Docker Desktop and Docker Compose are required. The first system run is slower
+because service images are built; subsequent runs reuse Docker's build cache.

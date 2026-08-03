@@ -10,7 +10,7 @@ using Testcontainers.RabbitMq;
 using Xunit;
 using NotificationsProgram = NotificationsApp::Program;
 
-namespace MeetingFlow.Microservices.IntegrationTests;
+namespace MeetingFlow.Microservices.IntegrationTests.RegistrationNotifications;
 
 public sealed class RegistrationNotificationsFixture : IAsyncLifetime
 {
