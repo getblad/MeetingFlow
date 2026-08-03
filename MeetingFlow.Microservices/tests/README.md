@@ -71,3 +71,30 @@ The stubs return only responses configured by each scenario. An unexpected
 downstream call receives no successful stub response and fails the test. This
 lets the suite verify Manager orchestration and early exits without starting
 DataAccessor, SchedulingEngine, PostgreSQL or RabbitMQ.
+
+## Registration notification integration test
+
+This targeted integration test verifies one asynchronous boundary rather than
+the complete application flow:
+
+```text
+real EventPublisher
+  -> RabbitMQ Testcontainer
+    -> real NotificationsAccessor consumer
+      -> PostgreSQL Testcontainer
+```
+
+It covers the production exchange, routing key, queue binding, JSON event
+contract, consumer and notification persistence. Gateway, Manager endpoints,
+DataAccessor and SchedulingEngine are not started.
+
+Docker Desktop must be running. Run from the repository root:
+
+```bash
+dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj
+```
+
+The fixture waits until RabbitMQ reports an active consumer before publishing.
+After publishing, the test polls the NotificationsAccessor HTTP API with a
+bounded timeout because message delivery is asynchronous. Fixed sleeps are not
+used for synchronization.

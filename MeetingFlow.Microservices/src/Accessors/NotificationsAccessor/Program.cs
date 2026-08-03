@@ -98,3 +98,7 @@ static NotificationDto ToDto(Notification notification) =>
         notification.Subject,
         notification.Body,
         notification.SentAt);
+
+// WebApplicationFactory uses this entry point to start the complete HTTP
+// component and its hosted RabbitMQ consumer in the test process.
+public partial class Program { }
