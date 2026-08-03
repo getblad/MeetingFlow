@@ -19,8 +19,8 @@ public sealed class SystemIntegrationTests(SystemIntegrationFixture fixture)
     [Trait("Category", "System")]
     public async Task CreateRegistration_ThroughGateway_PersistsAndSendsNotification()
     {
-        // A fresh Compose project guarantees this attendee has no notification
-        // and is not registered for meeting 2 before the test starts.
+        // The external runner creates a fresh Compose project, so this attendee
+        // has no notification and is not registered for meeting 2 yet.
         Assert.Empty(await GetNotificationsAsync());
 
         // Act: the only action enters through the public backend boundary.

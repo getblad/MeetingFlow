@@ -101,8 +101,7 @@ used for synchronization.
 
 ## Backend system integration test
 
-The system test starts a fresh, isolated Docker Compose project and enters only
-through the public Gateway API:
+The system test enters only through the public Gateway API:
 
 ```text
 test -> Gateway -> RegistrationsManager -> DataAccessor -> PostgreSQL
@@ -110,16 +109,32 @@ test -> Gateway -> RegistrationsManager -> DataAccessor -> PostgreSQL
                        `-> RabbitMQ -> NotificationsAccessor -> PostgreSQL
 ```
 
-The fixture builds and starts the complete Compose stack with a unique project
-name, a clean database and dynamically assigned host ports. It waits for every
-backend health endpoint and for the RabbitMQ notification consumer. After the
-test, `docker compose down --volumes --remove-orphans` removes the stack.
+Unlike the smaller test suites, xUnit does not own the full system environment.
+The external `run-system-tests.sh` runner:
+
+1. builds and starts an isolated Docker Compose project;
+2. uses dynamic host ports and waits for every backend health endpoint;
+3. waits until the RabbitMQ notification consumer is subscribed;
+4. passes the Gateway and NotificationsAccessor URLs to xUnit;
+5. runs only the system-test category;
+6. prints Compose logs if the test fails and always removes containers and
+   volumes.
+
+`SystemIntegrationFixture` has a deliberately smaller responsibility: it reads
+the supplied URLs, verifies that the required public endpoints are healthy and
+creates `HttpClient` instances. It never starts or stops Docker.
 
 Run only this slow system test:
 
 ```bash
-dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj --filter Category=System
+./MeetingFlow.Microservices/tests/run-system-tests.sh
 ```
+
+Running the test directly from the IDE is intentionally not self-contained. If
+the two required URL variables are absent, the fixture explains that the
+external runner must prepare the environment first. This demonstrates the
+separation between test orchestration and test assertions used for large
+system-test environments.
 
 Run only the targeted RabbitMQ integration test:
 
