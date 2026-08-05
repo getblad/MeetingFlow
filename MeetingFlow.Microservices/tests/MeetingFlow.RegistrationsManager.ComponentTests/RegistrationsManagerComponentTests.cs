@@ -13,10 +13,11 @@ using AccessorRegistrationDto = DataAccessor.Contracts.RegistrationDto;
 
 namespace MeetingFlow.RegistrationsManager.ComponentTests;
 
-public sealed class RegistrationsManagerComponentTests(
-    RegistrationsManagerFixture fixture)
+public sealed class RegistrationsManagerComponentTests
     : IClassFixture<RegistrationsManagerFixture>
 {
+    private readonly RegistrationsManagerFixture _fixture;
+
     private static readonly Guid MeetingId =
         Guid.Parse("b2000000-0000-0000-0000-000000000002");
 
@@ -26,15 +27,21 @@ public sealed class RegistrationsManagerComponentTests(
     private static readonly Guid RegistrationId =
         Guid.Parse("f6000000-0000-0000-0000-000000000099");
 
+    public RegistrationsManagerComponentTests(
+        RegistrationsManagerFixture fixture)
+    {
+        _fixture = fixture;
+        _fixture.Reset();
+    }
+
     [Fact]
     public async Task CreateRegistration_WhenDependenciesSucceed_OrchestratesFlowAndPublishesEvent()
     {
         // Arrange
-        fixture.Reset();
         StubMeetingAndAttendee();
         StubRegistrations([]);
 
-        fixture.SchedulingEngineStub
+        _fixture.SchedulingEngineStub
             .Given(Request.Create()
                 .WithPath("/scheduling/check-capacity")
                 .UsingPost())
@@ -50,14 +57,14 @@ public sealed class RegistrationsManagerComponentTests(
             "Pending",
             null);
 
-        fixture.DataAccessorStub
+        _fixture.DataAccessorStub
             .Given(Request.Create()
                 .WithPath("/data/registrations")
                 .UsingPost())
             .RespondWith(Json(savedRegistration, HttpStatusCode.Created));
 
         // Act: lowercase ticket type also checks Manager normalization.
-        var response = await fixture.Client.PostAsJsonAsync(
+        var response = await _fixture.Client.PostAsJsonAsync(
             "/registrations",
             new CreateRegistrationRequest(MeetingId, AttendeeId, "general"));
 
@@ -72,17 +79,17 @@ public sealed class RegistrationsManagerComponentTests(
         Assert.Equal(
             new CheckCapacityRequest(800, 0),
             ReadSinglePost<CheckCapacityRequest>(
-                fixture.SchedulingEngineStub,
+                _fixture.SchedulingEngineStub,
                 "/scheduling/check-capacity"));
         Assert.Equal(
             new PersistRegistrationRequest(MeetingId, AttendeeId, "General"),
             ReadSinglePost<PersistRegistrationRequest>(
-                fixture.DataAccessorStub,
+                _fixture.DataAccessorStub,
                 "/data/registrations"));
 
         // RabbitMQ is replaced by a spy, so we assert the integration event
         // without running a broker in this component suite.
-        var published = Assert.Single(fixture.EventPublisher.Events);
+        var published = Assert.Single(_fixture.EventPublisher.Events);
         Assert.Equal("registration.created.v1", published.RoutingKey);
 
         var integrationEvent = Assert.IsType<RegistrationCreatedV1>(published.Message);
@@ -95,7 +102,6 @@ public sealed class RegistrationsManagerComponentTests(
     public async Task CreateRegistration_WhenAttendeeAlreadyRegistered_StopsBeforeCapacityCheck()
     {
         // Arrange
-        fixture.Reset();
         StubMeetingAndAttendee();
         StubRegistrations(
         [
@@ -110,22 +116,21 @@ public sealed class RegistrationsManagerComponentTests(
         ]);
 
         // Act
-        var response = await fixture.Client.PostAsJsonAsync(
+        var response = await _fixture.Client.PostAsJsonAsync(
             "/registrations",
             new CreateRegistrationRequest(MeetingId, AttendeeId, "General"));
 
         // Assert: no SchedulingEngine stub was configured; reaching it would
         // make the test fail instead of returning the expected conflict.
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Empty(fixture.SchedulingEngineStub.LogEntries);
-        Assert.Empty(fixture.EventPublisher.Events);
+        Assert.Empty(_fixture.SchedulingEngineStub.LogEntries);
+        Assert.Empty(_fixture.EventPublisher.Events);
     }
 
     [Fact]
     public async Task CreateRegistration_WhenMeetingIsFull_DoesNotPersistOrPublish()
     {
         // Arrange
-        fixture.Reset();
         StubMeetingAndAttendee(venueCapacity: 1);
         StubRegistrations(
         [
@@ -139,35 +144,35 @@ public sealed class RegistrationsManagerComponentTests(
                 null)
         ]);
 
-        fixture.SchedulingEngineStub
+        _fixture.SchedulingEngineStub
             .Given(Request.Create()
                 .WithPath("/scheduling/check-capacity")
                 .UsingPost())
             .RespondWith(Json(new CheckCapacityResult(false, 0)));
 
         // Act
-        var response = await fixture.Client.PostAsJsonAsync(
+        var response = await _fixture.Client.PostAsJsonAsync(
             "/registrations",
             new CreateRegistrationRequest(MeetingId, AttendeeId, "General"));
 
         // Assert: POST /data/registrations has no stub. Calling it would result
         // in a downstream failure, so Conflict proves the flow stopped earlier.
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Empty(fixture.EventPublisher.Events);
+        Assert.Empty(_fixture.EventPublisher.Events);
         Assert.Equal(
             new CheckCapacityRequest(1, 1),
             ReadSinglePost<CheckCapacityRequest>(
-                fixture.SchedulingEngineStub,
+                _fixture.SchedulingEngineStub,
                 "/scheduling/check-capacity"));
         Assert.DoesNotContain(
-            fixture.DataAccessorStub.LogEntries,
+            _fixture.DataAccessorStub.LogEntries,
             entry => entry.RequestMessage?.Path == "/data/registrations"
                      && entry.RequestMessage.Method == "POST");
     }
 
     private void StubMeetingAndAttendee(int venueCapacity = 800)
     {
-        fixture.DataAccessorStub
+        _fixture.DataAccessorStub
             .Given(Request.Create()
                 .WithPath($"/data/meetings/{MeetingId}/registration-context")
                 .UsingGet())
@@ -178,7 +183,7 @@ public sealed class RegistrationsManagerComponentTests(
                 DateTimeOffset.Parse("2026-11-01T12:00:00Z"),
                 venueCapacity)));
 
-        fixture.DataAccessorStub
+        _fixture.DataAccessorStub
             .Given(Request.Create()
                 .WithPath($"/data/attendees/{AttendeeId}/contact")
                 .UsingGet())
@@ -190,7 +195,7 @@ public sealed class RegistrationsManagerComponentTests(
 
     private void StubRegistrations(IReadOnlyList<AccessorRegistrationDto> registrations)
     {
-        fixture.DataAccessorStub
+        _fixture.DataAccessorStub
             .Given(Request.Create()
                 .WithPath($"/data/registrations/by-meeting/{MeetingId}")
                 .UsingGet())
