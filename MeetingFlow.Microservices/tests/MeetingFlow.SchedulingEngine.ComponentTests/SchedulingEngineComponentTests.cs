@@ -13,8 +13,32 @@ public sealed class SchedulingEngineComponentTests(
 {
     private readonly HttpClient _client = factory.CreateClient();
 
-    [Fact]
-    public async Task CheckConflict_WhenSessionsOverlapInSameRoom_ReturnsConflict()
+    [Theory]
+    [InlineData(
+        "main hall",
+        "2026-09-10T10:30:00Z",
+        "2026-09-10T11:30:00Z",
+        true)]
+    [InlineData(
+        "Main Hall",
+        "2026-09-10T11:00:00Z",
+        "2026-09-10T12:00:00Z",
+        false)]
+    [InlineData(
+        "Room B",
+        "2026-09-10T10:30:00Z",
+        "2026-09-10T11:30:00Z",
+        false)]
+    [InlineData(
+        "Main Hall",
+        "2026-09-10T09:00:00Z",
+        "2026-09-10T10:00:00Z",
+        false)]
+    public async Task CheckConflict_ForValidSessions_ReturnsExpectedResult(
+        string candidateRoom,
+        string candidateStartsAt,
+        string candidateEndsAt,
+        bool expectedConflict)
     {
         // Arrange
         var existing = Session(
@@ -22,9 +46,9 @@ public sealed class SchedulingEngineComponentTests(
             startsAt: "2026-09-10T10:00:00Z",
             endsAt: "2026-09-10T11:00:00Z");
         var candidate = Session(
-            roomName: "main hall",
-            startsAt: "2026-09-10T10:30:00Z",
-            endsAt: "2026-09-10T11:30:00Z");
+            roomName: candidateRoom,
+            startsAt: candidateStartsAt,
+            endsAt: candidateEndsAt);
 
         // Act
         var response = await _client.PostAsJsonAsync(
@@ -35,32 +59,7 @@ public sealed class SchedulingEngineComponentTests(
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = await response.Content.ReadFromJsonAsync<CheckConflictResult>();
         Assert.NotNull(result);
-        Assert.True(result.HasConflict);
-    }
-
-    [Fact]
-    public async Task CheckConflict_WhenSessionsAreAdjacent_ReturnsNoConflict()
-    {
-        // Arrange
-        var existing = Session(
-            roomName: "Main Hall",
-            startsAt: "2026-09-10T10:00:00Z",
-            endsAt: "2026-09-10T11:00:00Z");
-        var candidate = Session(
-            roomName: "Main Hall",
-            startsAt: "2026-09-10T11:00:00Z",
-            endsAt: "2026-09-10T12:00:00Z");
-
-        // Act
-        var response = await _client.PostAsJsonAsync(
-            "/scheduling/check-conflict",
-            new CheckConflictRequest(candidate, [existing]));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = await response.Content.ReadFromJsonAsync<CheckConflictResult>();
-        Assert.NotNull(result);
-        Assert.False(result.HasConflict);
+        Assert.Equal(expectedConflict, result.HasConflict);
     }
 
     [Fact]
