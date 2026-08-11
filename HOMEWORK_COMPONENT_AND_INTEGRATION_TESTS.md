@@ -90,7 +90,8 @@ Test persistence behavior, for example:
 - ensuring internal model fields do not leak through HTTP.
 
 Decide what kind of database gives the test meaningful confidence and how its
-data should be isolated and cleaned up.
+data should be isolated and cleaned up. Each test should own the data it asserts
+on and must not depend on production seed data or test execution order.
 
 ### RegistrationsManager
 
