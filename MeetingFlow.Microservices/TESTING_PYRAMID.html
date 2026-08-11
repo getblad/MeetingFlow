@@ -228,7 +228,9 @@
       <li>Observe the asynchronous registration notification.</li>
     </ol>
 
-    <p>The complete environment is started by an external automated runner using Docker Compose. The runner owns readiness checks, test execution, failure logs, and cleanup. The xUnit fixture only connects to the prepared environment.</p>
+    <p>The complete backend is started locally with Docker Compose before the test. The xUnit fixture connects to the fixed local Gateway and NotificationsAccessor addresses and verifies that they are healthy. This makes the test available through the IDE's Run and Debug actions.</p>
+
+    <p>For CI or a larger project, the same local sequence can later be automated with a script or workflow step.</p>
 
     <p><strong>Intentionally excluded:</strong> all scheduling edge cases, all Manager rejection branches, and detailed database behavior. Those risks are already covered more cheaply below.</p>
 

@@ -239,7 +239,7 @@ xUnit → real RegistrationsManager
 
     <h2>5. Backend System Integration Test</h2>
 
-    <p>The system test starts the real backend topology and enters through the public Gateway API.</p>
+    <p>The system test uses the real backend topology started locally with Docker Compose and enters through the public Gateway API.</p>
 
     <div class="diagram">test → Gateway → RegistrationsManager → DataAccessor → PostgreSQL
                             ├→ SchedulingEngine
@@ -252,23 +252,19 @@ xUnit → real RegistrationsManager
       <p><span class="label">What it teaches:</span> A system test should cover a critical user flow through the public backend boundary without asserting every internal implementation detail.</p>
     </div>
 
-    <h3>Why Docker Compose is outside the xUnit fixture</h3>
+    <h3>Local environment and xUnit</h3>
 
-    <div class="diagram">run-system-tests.sh
-  → docker compose up --build
-  → wait for HTTP readiness
-  → wait for the RabbitMQ consumer
-  → pass dynamic URLs to xUnit
-  → dotnet test --filter Category=System
-  → collect logs on failure
-  → docker compose down --volumes</div>
+    <div class="diagram">docker compose up --build
+  → wait until the local backend is ready
+  → run or debug the test from VS Code Testing
+  → docker compose down when clean data is needed</div>
 
-    <p>The shell runner owns the full environment lifecycle. <code>SystemIntegrationFixture</code> only reads service URLs, checks readiness, and creates <code>HttpClient</code> instances. It does not start or stop Docker.</p>
+    <p><code>SystemIntegrationFixture</code> connects to the fixed local Gateway and NotificationsAccessor URLs, checks readiness, and creates <code>HttpClient</code> instances. It does not start or stop Docker.</p>
 
     <h3>Test data and cleanup</h3>
-    <p>Every run creates a uniquely named Compose project with dynamic host ports. It receives fresh seed data, and the test creates a registration and notification. Individual rows are not deleted. The runner removes the entire temporary environment, containers, network, and volumes after the test. An existing local MeetingFlow environment remains untouched.</p>
+    <p>The test creates a registration and notification in the local database. The data remains after the test, so a clean repeated run requires recreating the Compose environment. A script or CI workflow can automate the same sequence later if needed.</p>
 
-    <div class="summary"><strong>Main lesson:</strong> Full-system infrastructure is easier to manage from a dedicated runner or CI step, while xUnit remains focused on system behavior.</div>
+    <div class="summary"><strong>Main lesson:</strong> A system test can connect to a locally running real backend and remain easy to run and debug from the IDE. Environment automation can be added separately when the project needs it.</div>
 
     <h2>6. Testcontainers and Docker Compose</h2>
 

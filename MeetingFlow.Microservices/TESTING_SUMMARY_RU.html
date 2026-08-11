@@ -239,7 +239,7 @@ xUnit → настоящий RegistrationsManager
 
     <h2>5. Системный интеграционный тест backend</h2>
 
-    <p>Системный тест поднимает настоящую backend-топологию и входит через публичный API Gateway.</p>
+    <p>Системный тест использует настоящую backend-топологию, предварительно запущенную локально через Docker Compose, и входит через публичный API Gateway.</p>
 
     <div class="diagram">test → Gateway → RegistrationsManager → DataAccessor → PostgreSQL
                             ├→ SchedulingEngine
@@ -252,23 +252,19 @@ xUnit → настоящий RegistrationsManager
       <p><span class="label">Чему учит:</span> System test должен проверять критический пользовательский flow через публичную backend-границу, не привязываясь ко всем внутренним деталям реализации.</p>
     </div>
 
-    <h3>Почему Docker Compose запускается вне xUnit fixture</h3>
+    <h3>Локальное окружение и xUnit</h3>
 
-    <div class="diagram">run-system-tests.sh
-  → docker compose up --build
-  → ожидание HTTP readiness
-  → ожидание RabbitMQ consumer
-  → передача динамических URL в xUnit
-  → dotnet test --filter Category=System
-  → сбор логов при ошибке
-  → docker compose down --volumes</div>
+    <div class="diagram">docker compose up --build
+  → ожидание готовности локального backend
+  → запуск или отладка теста через VS Code Testing
+  → docker compose down, когда нужны чистые данные</div>
 
-    <p>Shell runner управляет жизненным циклом полного окружения. <code>SystemIntegrationFixture</code> только читает адреса сервисов, проверяет readiness и создаёт <code>HttpClient</code>. Он не запускает и не останавливает Docker.</p>
+    <p><code>SystemIntegrationFixture</code> подключается к фиксированным локальным адресам Gateway и NotificationsAccessor, проверяет readiness и создаёт <code>HttpClient</code>. Он не запускает и не останавливает Docker.</p>
 
     <h3>Тестовые данные и cleanup</h3>
-    <p>Каждый запуск создаёт Compose project с уникальным именем и динамическими host ports. Он получает свежие seed-данные, после чего тест создаёт регистрацию и уведомление. Отдельные строки не удаляются. Runner удаляет всё временное окружение: контейнеры, сеть и volumes. Уже запущенное локальное окружение MeetingFlow не затрагивается.</p>
+    <p>Тест создаёт регистрацию и уведомление в локальной базе. Данные остаются после теста, поэтому для повторного чистого прогона нужно пересоздать Compose-окружение. Позже эту же последовательность при необходимости можно автоматизировать скриптом или CI workflow.</p>
 
-    <div class="summary"><strong>Главный вывод:</strong> Инфраструктурой полной системы удобнее управлять из отдельного runner или CI step, а xUnit должен оставаться сфокусированным на поведении системы.</div>
+    <div class="summary"><strong>Главный вывод:</strong> Системный тест может подключаться к настоящему локально запущенному backend и оставаться удобным для запуска и отладки из IDE. Автоматизацию окружения можно добавить отдельно, когда она понадобится проекту.</div>
 
     <h2>6. Testcontainers и Docker Compose</h2>
 

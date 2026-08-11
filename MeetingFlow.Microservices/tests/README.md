@@ -109,32 +109,29 @@ test -> Gateway -> RegistrationsManager -> DataAccessor -> PostgreSQL
                        `-> RabbitMQ -> NotificationsAccessor -> PostgreSQL
 ```
 
-Unlike the smaller test suites, xUnit does not own the full system environment.
-The external `run-system-tests.sh` runner:
+The test uses the complete backend started locally with Docker Compose. The
+`SystemIntegrationFixture` connects to Gateway at `http://localhost:8080` and
+NotificationsAccessor at `http://localhost:5011`, verifies their health
+endpoints, waits for the local RabbitMQ consumer and creates `HttpClient`
+instances. It does not start or stop Docker.
 
-1. builds and starts an isolated Docker Compose project;
-2. uses dynamic host ports and waits for every backend health endpoint;
-3. waits until the RabbitMQ notification consumer is subscribed;
-4. passes the Gateway and NotificationsAccessor URLs to xUnit;
-5. runs only the system-test category;
-6. prints Compose logs if the test fails and always removes containers and
-   volumes.
+Start the backend from `MeetingFlow.Microservices`:
 
-`SystemIntegrationFixture` has a deliberately smaller responsibility: it reads
-the supplied URLs, verifies that the required public endpoints are healthy and
-creates `HttpClient` instances. It never starts or stops Docker.
+```bash
+docker compose up --build
+```
 
 Run only this slow system test:
 
 ```bash
-./MeetingFlow.Microservices/tests/run-system-tests.sh
+dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj --filter Category=System
 ```
 
-Running the test directly from the IDE is intentionally not self-contained. If
-the two required URL variables are absent, the fixture explains that the
-external runner must prepare the environment first. This demonstrates the
-separation between test orchestration and test assertions used for large
-system-test environments.
+After the backend is ready, the same test can be run or debugged directly from
+the VS Code Testing view. The test writes a registration and notification into
+the local database. To repeat it from clean seed data, stop and recreate the
+Compose environment with `docker compose down` followed by
+`docker compose up --build`.
 
 Run only the targeted RabbitMQ integration test:
 
@@ -142,5 +139,6 @@ Run only the targeted RabbitMQ integration test:
 dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj --filter Category=Integration
 ```
 
-Docker Desktop and Docker Compose are required. The first system run is slower
-because service images are built; subsequent runs reuse Docker's build cache.
+Docker Desktop and Docker Compose are required for the system test. In CI or a
+larger project, the same startup, readiness, test and cleanup commands can be
+wrapped in a script or workflow step.

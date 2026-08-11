@@ -161,23 +161,17 @@ The test should prove that:
 2. the saved registration can be read again;
 3. the registration notification is eventually created.
 
-Use real services and real infrastructure for this flow.
+Use real services and real infrastructure for this flow. Start the backend
+locally with Docker Compose, then run or debug the test from your test runner or
+IDE. The test fixture should connect to the running system rather than starting
+the complete topology itself.
 
-The environment must start automatically. Do not require participants or CI to
-run `docker compose up` manually before the test, and do not start the complete
-microservice topology from an xUnit fixture.
+Think about readiness, test data and repeated runs. What state does the test
+leave in the local database, and how can you return to clean seed data?
 
-Choose an external orchestration approach, such as a dedicated test script,
-task, or CI step. It should:
-
-- start the environment;
-- wait until the required services are ready;
-- run the system test;
-- collect useful logs when something fails;
-- remove the test environment and data afterward.
-
-Think about how the system test can run without conflicting with an already
-running local MeetingFlow environment.
+As an optional design question, consider how the local sequence could later be
+automated by a script or CI step so that startup, readiness checks, test
+execution, logs and cleanup do not require separate manual commands.
 
 Do not repeat every component-test scenario here. One critical happy path is
 enough to prove that the deployed system works together.
@@ -189,12 +183,12 @@ enough to prove that the deployed system works together.
 1. The completed strategy table from Part 1.
 2. Component tests for at least two services, including at least one `Theory`.
 3. One targeted integration test between real components.
-4. One automated backend system test.
+4. One backend system test against the locally running environment.
 5. A short `TESTING.md` with:
    - commands for each test level;
    - Docker requirements;
    - real and replaced dependencies;
-   - environment startup and cleanup behavior.
+   - local environment startup and cleanup behavior.
 
 ---
 
