@@ -1,5 +1,9 @@
+using DataAccessor.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
+using Respawn;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -15,9 +19,36 @@ public sealed class DataAccessorFixture : IAsyncLifetime
 
     private WebApplicationFactory<Program>? _application;
     private HttpClient? _client;
+    private Respawner? _respawner;
 
     public HttpClient Client => _client
         ?? throw new InvalidOperationException("The fixture has not been initialized.");
+
+    public async Task SeedAsync(params object[] entities)
+    {
+        if (_application is null)
+        {
+            throw new InvalidOperationException("The fixture has not been initialized.");
+        }
+
+        using var scope = _application.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<MeetingFlowDbContext>();
+
+        db.AddRange(entities);
+        await db.SaveChangesAsync();
+    }
+
+    public async Task ResetDatabaseAsync()
+    {
+        if (_respawner is null)
+        {
+            throw new InvalidOperationException("The fixture has not been initialized.");
+        }
+
+        await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await _respawner.ResetAsync(connection);
+    }
 
     public async Task InitializeAsync()
     {
@@ -31,8 +62,17 @@ public sealed class DataAccessorFixture : IAsyncLifetime
             });
 
         // CreateClient starts DataAccessor. Its normal startup path creates the
-        // schema and inserts seed data into this disposable PostgreSQL database.
+        // schema and inserts production seed data. Respawn removes that data
+        // before every test, so tests only observe their own Arrange data.
         _client = _application.CreateClient();
+
+        await using var connection = new NpgsqlConnection(_postgres.GetConnectionString());
+        await connection.OpenAsync();
+        _respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
+        {
+            DbAdapter = DbAdapter.Postgres,
+            SchemasToInclude = ["meetings", "registrations", "feedback"]
+        });
     }
 
     public async Task DisposeAsync()
