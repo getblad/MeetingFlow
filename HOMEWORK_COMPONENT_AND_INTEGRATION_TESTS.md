@@ -167,8 +167,10 @@ locally with Docker Compose, then run or debug the test from your test runner or
 IDE. The test fixture should connect to the running system rather than starting
 the complete topology itself.
 
-Think about readiness, test data and repeated runs. What state does the test
-leave in the local database, and how can you return to clean seed data?
+Think about readiness, test-data ownership, and repeated runs. The test should
+not depend on an empty database or fixed seed records, and it must not modify
+data it does not own. Decide how prerequisites are created and cleaned up
+without adding production operations solely for test convenience.
 
 As an optional design question, consider how the local sequence could later be
 automated by a script or CI step so that startup, readiness checks, test

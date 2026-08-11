@@ -10,6 +10,8 @@ public sealed class SystemIntegrationFixture : IAsyncLifetime
     private static readonly Uri GatewayUrl = new("http://127.0.0.1:8080");
     private static readonly Uri NotificationsUrl = new("http://127.0.0.1:5011");
     private static readonly Uri RabbitMqUrl = new("amqp://guest:guest@127.0.0.1:5672");
+    private const string PostgresConnectionString =
+        "Host=127.0.0.1;Port=5432;Database=meetingflow;Username=meetingflow;Password=meetingflow";
 
     private HttpClient? _gatewayClient;
     private HttpClient? _notificationsClient;
@@ -19,6 +21,8 @@ public sealed class SystemIntegrationFixture : IAsyncLifetime
 
     public HttpClient NotificationsClient => _notificationsClient
         ?? throw new InvalidOperationException("The system fixture has not been initialized.");
+
+    public string DatabaseConnectionString => PostgresConnectionString;
 
     public async Task InitializeAsync()
     {

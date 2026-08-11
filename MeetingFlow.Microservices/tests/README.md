@@ -128,10 +128,11 @@ dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.Integratio
 ```
 
 After the backend is ready, the same test can be run or debugged directly from
-the VS Code Testing view. The test writes a registration and notification into
-the local database. To repeat it from clean seed data, stop and recreate the
-Compose environment with `docker compose down` followed by
-`docker compose up --build`.
+the VS Code Testing view. A per-test data scope inserts unique venue, meeting and
+attendee prerequisites directly into the local PostgreSQL database. The tested
+registration action still enters through Gateway, and the scope removes only
+its own notification, registration and prerequisite rows afterwards. Existing
+local data is neither required nor cleared between runs.
 
 Run only the targeted RabbitMQ integration test:
 
