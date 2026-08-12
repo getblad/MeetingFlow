@@ -170,7 +170,10 @@ the complete topology itself.
 Think about readiness, test-data ownership, and repeated runs. The test should
 not depend on an empty database or fixed seed records, and it must not modify
 data it does not own. Decide how prerequisites are created and cleaned up
-without adding production operations solely for test convenience.
+without adding production operations solely for test convenience. Prefer
+existing public business operations for setup and cleanup. If required cleanup
+is not part of the product API, design an isolated test-support mechanism that
+is unavailable during normal application startup.
 
 As an optional design question, consider how the local sequence could later be
 automated by a script or CI step so that startup, readiness checks, test
