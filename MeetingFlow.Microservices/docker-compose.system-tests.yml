@@ -1,0 +1,8 @@
+services:
+  dataaccessor:
+    environment:
+      TestSupport__Enabled: "true"
+
+  notifications-accessor:
+    environment:
+      TestSupport__Enabled: "true"

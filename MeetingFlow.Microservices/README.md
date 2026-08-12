@@ -119,11 +119,17 @@ Tables are created by EF Core `EnsureCreated()` at service startup. Seed data is
 
 | Method | Path                                    | Description                                      |
 | ------ | --------------------------------------- | ------------------------------------------------ |
+| POST   | `/venues`                               | Create a venue                                   |
+| DELETE | `/venues/{id}`                          | Delete an unused venue                           |
 | GET    | `/meetings`                             | Public meeting summaries                         |
 | GET    | `/meetings/{id}`                        | Public details, sessions and aggregate statistics |
+| POST   | `/meetings`                             | Create a meeting                                 |
 | PUT    | `/meetings/{id}`                        | Update client-controlled meeting fields          |
+| DELETE | `/meetings/{id}`                        | Delete a meeting without dependent records       |
 | GET    | `/speakers`                             | Public speaker profiles without contact data     |
 | GET    | `/speakers/{id}`                        | Public speaker details                           |
+| POST   | `/attendees`                            | Create an attendee                               |
+| DELETE | `/attendees/{id}`                       | Delete an attendee without dependent records     |
 | POST   | `/registrations`                        | Create registration from meeting/attendee/ticket |
 | GET    | `/registrations/by-meeting/{meetingId}` | Safe registration summaries                      |
 | POST   | `/feedback`                             | Submit rating and comment                        |

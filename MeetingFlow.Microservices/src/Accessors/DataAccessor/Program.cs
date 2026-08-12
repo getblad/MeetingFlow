@@ -181,6 +181,19 @@ app.MapPost("/data/registrations", async (
     return Results.Created($"/data/registrations/{saved.Id}", saved.ToDto());
 });
 
+// Test support is opt-in and is intentionally not routed through Gateway.
+// It is absent from the application's endpoint table unless explicitly enabled.
+if (app.Configuration.GetValue<bool>("TestSupport:Enabled"))
+{
+    app.MapDelete("/_test/registrations/by-attendee/{attendeeId:guid}", async (
+        Guid attendeeId,
+        RegistrationsRepository r) =>
+    {
+        await r.DeleteRegistrationsByAttendeeAsync(attendeeId);
+        return Results.NoContent();
+    });
+}
+
 app.MapGet("/data/attendees/{id:guid}/contact", async (Guid id, RegistrationsRepository r) =>
     await r.GetAttendeeAsync(id) is { } attendee
         ? Results.Ok(attendee.ToContactDto())

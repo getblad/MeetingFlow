@@ -28,6 +28,11 @@ public class RegistrationsRepository
         return registration;
     }
 
+    public Task<int> DeleteRegistrationsByAttendeeAsync(Guid attendeeId) =>
+        _db.Registrations
+            .Where(item => item.AttendeeId == attendeeId)
+            .ExecuteDeleteAsync();
+
     public async Task<Attendee> CreateAttendeeAsync(Attendee attendee)
     {
         _db.Attendees.Add(attendee);

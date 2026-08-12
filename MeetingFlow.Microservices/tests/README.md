@@ -101,7 +101,8 @@ used for synchronization.
 
 ## Backend system integration test
 
-The system test enters only through the public Gateway API:
+The system test creates its prerequisites and executes the business flow through
+the public Gateway API:
 
 ```text
 test -> Gateway -> RegistrationsManager -> DataAccessor -> PostgreSQL
@@ -115,11 +116,16 @@ NotificationsAccessor at `http://localhost:5011`, verifies their health
 endpoints, waits for the local RabbitMQ consumer and creates `HttpClient`
 instances. It does not start or stop Docker.
 
-Start the backend from `MeetingFlow.Microservices`:
+Start the backend from `MeetingFlow.Microservices` with the system-test override:
 
 ```bash
-docker compose up --build
+docker compose -f docker-compose.yml -f docker-compose.system-tests.yml up --build
 ```
+
+This is the same local Compose environment, ports and volumes. The override only
+sets `TestSupport__Enabled=true` for DataAccessor and NotificationsAccessor.
+Without that explicit setting, the `/_test/...` cleanup routes are not mapped at
+all. They are also never forwarded by Gateway.
 
 Run only this slow system test:
 
@@ -128,11 +134,13 @@ dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.Integratio
 ```
 
 After the backend is ready, the same test can be run or debugged directly from
-the VS Code Testing view. A per-test data scope inserts unique venue, meeting and
-attendee prerequisites directly into the local PostgreSQL database. The tested
-registration action still enters through Gateway, and the scope removes only
-its own notification, registration and prerequisite rows afterwards. Existing
-local data is neither required nor cleared between runs.
+the VS Code Testing view. It creates a unique venue, meeting and attendee through
+public Gateway endpoints, then creates and verifies the registration. Cleanup
+deletes the notification and registration through opt-in, Accessor-owned test
+support routes, followed by the public attendee, meeting and venue DELETE
+endpoints. The test never connects to PostgreSQL directly and never depends on
+seed data or execution order. Existing local data is neither required nor
+cleared between runs.
 
 Run only the targeted RabbitMQ integration test:
 
