@@ -5,6 +5,19 @@ public sealed record AttendeeSummaryDto(
     string FullName,
     string? Company);
 
+public sealed record AttendeeDto(
+    Guid Id,
+    string FullName,
+    string Email,
+    string? Phone,
+    string? Company);
+
+public sealed record CreateAttendeeRequest(
+    string FullName,
+    string Email,
+    string? Phone,
+    string? Company);
+
 public sealed record RegistrationDto(
     Guid Id,
     Guid MeetingId,

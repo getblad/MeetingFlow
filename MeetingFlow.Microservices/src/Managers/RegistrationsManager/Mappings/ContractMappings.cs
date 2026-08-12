@@ -2,6 +2,15 @@ namespace RegistrationsManager.Mappings;
 
 public static class ContractMappings
 {
+    public static RegistrationsManager.Contracts.AttendeeDto ToManagerDto(
+        this DataAccessor.Contracts.AttendeeDetailsDto attendee) =>
+        new(
+            attendee.Id,
+            attendee.FullName,
+            attendee.Email,
+            attendee.Phone,
+            attendee.Company);
+
     public static RegistrationsManager.Contracts.RegistrationDto ToManagerDto(
         this DataAccessor.Contracts.RegistrationDto registration) =>
         new(

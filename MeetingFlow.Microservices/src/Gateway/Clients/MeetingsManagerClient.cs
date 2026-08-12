@@ -11,6 +11,32 @@ public class MeetingsManagerClient
     public async Task<IReadOnlyList<MeetingListItemDto>> GetAllAsync()
         => await _http.GetFromJsonAsync<List<MeetingListItemDto>>("/meetings") ?? [];
 
+    public async Task<DownstreamResult<VenueDto>> CreateVenueAsync(
+        MeetingsManager.Contracts.CreateVenueRequest request)
+    {
+        using var response = await _http.PostAsJsonAsync("/venues", request);
+        return await DownstreamResult<VenueDto>.FromResponseAsync(response);
+    }
+
+    public async Task<DownstreamStatus> DeleteVenueAsync(Guid id)
+    {
+        using var response = await _http.DeleteAsync($"/venues/{id}");
+        return await DownstreamStatus.FromResponseAsync(response);
+    }
+
+    public async Task<DownstreamResult<MeetingDetailsDto>> CreateMeetingAsync(
+        MeetingsManager.Contracts.CreateMeetingRequest request)
+    {
+        using var response = await _http.PostAsJsonAsync("/meetings", request);
+        return await DownstreamResult<MeetingDetailsDto>.FromResponseAsync(response);
+    }
+
+    public async Task<DownstreamStatus> DeleteMeetingAsync(Guid id)
+    {
+        using var response = await _http.DeleteAsync($"/meetings/{id}");
+        return await DownstreamStatus.FromResponseAsync(response);
+    }
+
     public async Task<MeetingDetailsDto?> GetByIdAsync(Guid id)
     {
         var response = await _http.GetAsync($"/meetings/{id}");

@@ -7,6 +7,12 @@ public sealed record VenueDto(
     string City,
     int Capacity);
 
+public sealed record CreateVenueRequest(
+    string Name,
+    string Address,
+    string City,
+    int Capacity);
+
 public sealed record SpeakerDto(
     Guid Id,
     string FullName,
@@ -46,6 +52,14 @@ public sealed record MeetingDetailsDto(
     double? AverageRating);
 
 public sealed record UpdateMeetingRequest(
+    string Title,
+    string Description,
+    string Status,
+    DateTimeOffset StartsAt,
+    DateTimeOffset EndsAt,
+    Guid VenueId);
+
+public sealed record CreateMeetingRequest(
     string Title,
     string Description,
     string Status,

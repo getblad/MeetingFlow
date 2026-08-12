@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using DataAccessor.Contracts;
+using System.Net;
 
 namespace RegistrationsManager.Clients;
 
@@ -36,11 +37,35 @@ public class DataAccessorClient
         return await response.Content.ReadFromJsonAsync<AttendeeContactDto>();
     }
 
+    public async Task<AccessorResult<AttendeeDetailsDto>> CreateAttendeeAsync(
+        DataAccessor.Contracts.CreateAttendeeRequest request)
+    {
+        using var response = await _http.PostAsJsonAsync("/data/attendees", request);
+        return await AccessorResult<AttendeeDetailsDto>.FromResponseAsync(response);
+    }
+
+    public async Task<HttpStatusCode> DeleteAttendeeAsync(Guid id)
+    {
+        using var response = await _http.DeleteAsync($"/data/attendees/{id}");
+        return response.StatusCode;
+    }
+
     public async Task<FeedbackDto> CreateFeedbackAsync(PersistFeedbackRequest body)
     {
         var response = await _http.PostAsJsonAsync("/data/feedback", body);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<FeedbackDto>()
             ?? throw new InvalidOperationException("DataAccessor returned an empty body.");
+    }
+}
+
+public sealed record AccessorResult<T>(HttpStatusCode StatusCode, T? Value)
+{
+    public static async Task<AccessorResult<T>> FromResponseAsync(HttpResponseMessage response)
+    {
+        var value = response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<T>()
+            : default;
+        return new AccessorResult<T>(response.StatusCode, value);
     }
 }

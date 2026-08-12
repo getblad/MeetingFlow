@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using DataAccessor.Contracts;
+using System.Net;
 
 namespace MeetingsManager.Clients;
 
@@ -10,6 +11,32 @@ public class DataAccessorClient
 
     public async Task<IReadOnlyList<MeetingSummaryDto>> GetAllMeetingsAsync()
         => await _http.GetFromJsonAsync<List<MeetingSummaryDto>>("/data/meetings") ?? [];
+
+    public async Task<AccessorResult<VenueDetailsDto>> CreateVenueAsync(
+        DataAccessor.Contracts.CreateVenueRequest request)
+    {
+        using var response = await _http.PostAsJsonAsync("/data/venues", request);
+        return await AccessorResult<VenueDetailsDto>.FromResponseAsync(response);
+    }
+
+    public async Task<HttpStatusCode> DeleteVenueAsync(Guid id)
+    {
+        using var response = await _http.DeleteAsync($"/data/venues/{id}");
+        return response.StatusCode;
+    }
+
+    public async Task<AccessorResult<MeetingDetailsDto>> CreateMeetingAsync(
+        DataAccessor.Contracts.CreateMeetingRequest request)
+    {
+        using var response = await _http.PostAsJsonAsync("/data/meetings", request);
+        return await AccessorResult<MeetingDetailsDto>.FromResponseAsync(response);
+    }
+
+    public async Task<HttpStatusCode> DeleteMeetingAsync(Guid id)
+    {
+        using var response = await _http.DeleteAsync($"/data/meetings/{id}");
+        return response.StatusCode;
+    }
 
     public async Task<MeetingDetailsDto?> GetMeetingAsync(Guid id)
     {
@@ -46,4 +73,15 @@ public class DataAccessorClient
 
     public async Task<IReadOnlyList<AdminMeetingDto>> GetAdminMeetingsAsync()
         => await _http.GetFromJsonAsync<List<AdminMeetingDto>>("/data/admin/meetings") ?? [];
+}
+
+public sealed record AccessorResult<T>(HttpStatusCode StatusCode, T? Value)
+{
+    public static async Task<AccessorResult<T>> FromResponseAsync(HttpResponseMessage response)
+    {
+        var value = response.IsSuccessStatusCode
+            ? await response.Content.ReadFromJsonAsync<T>()
+            : default;
+        return new AccessorResult<T>(response.StatusCode, value);
+    }
 }

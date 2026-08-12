@@ -5,6 +5,7 @@ using RegistrationsManager.Contracts;
 using RegistrationsManager.Mappings;
 using RegistrationsManager.Messaging;
 using RegistrationsManager.Pricing;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,49 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Registrat
 app.MapGet("/registrations/by-meeting/{meetingId:guid}", async (Guid meetingId, DataAccessorClient data) =>
     Results.Ok((await data.GetRegistrationsForMeetingAsync(meetingId))
         .Select(registration => registration.ToManagerDto())));
+
+app.MapPost("/attendees", async (
+    RegistrationsManager.Contracts.CreateAttendeeRequest request,
+    DataAccessorClient data) =>
+{
+    if (string.IsNullOrWhiteSpace(request.FullName)
+        || string.IsNullOrWhiteSpace(request.Email)
+        || !request.Email.Contains('@', StringComparison.Ordinal))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["attendee"] = ["FullName and a valid email are required."]
+        });
+    }
+
+    var downstream = await data.CreateAttendeeAsync(
+        new DataAccessor.Contracts.CreateAttendeeRequest(
+            request.FullName,
+            request.Email,
+            request.Phone,
+            request.Company));
+
+    return downstream.StatusCode == HttpStatusCode.Created && downstream.Value is not null
+        ? Results.Created(
+            $"/attendees/{downstream.Value.Id}",
+            downstream.Value.ToManagerDto())
+        : Results.StatusCode((int)downstream.StatusCode);
+});
+
+app.MapDelete("/attendees/{id:guid}", async (Guid id, DataAccessorClient data) =>
+{
+    var statusCode = await data.DeleteAttendeeAsync(id);
+    return statusCode switch
+    {
+        HttpStatusCode.NoContent => Results.NoContent(),
+        HttpStatusCode.NotFound => Results.NotFound(),
+        HttpStatusCode.Conflict => Results.Conflict(new
+        {
+            error = "Attendee has related registrations or feedback."
+        }),
+        _ => Results.StatusCode((int)statusCode)
+    };
+});
 
 app.MapPost("/registrations", async (
     CreateRegistrationRequest request,

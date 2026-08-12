@@ -27,6 +27,53 @@ public class MeetingsRepository
             .Include(meeting => meeting.Venue)
             .FirstOrDefaultAsync(meeting => meeting.Id == id);
 
+    public async Task<Venue> CreateVenueAsync(Venue venue)
+    {
+        _db.Venues.Add(venue);
+        await _db.SaveChangesAsync();
+        return venue;
+    }
+
+    public async Task<Meeting?> CreateMeetingAsync(Meeting meeting)
+    {
+        if (!await _db.Venues.AnyAsync(venue => venue.Id == meeting.VenueId))
+        {
+            return null;
+        }
+
+        _db.Meetings.Add(meeting);
+        await _db.SaveChangesAsync();
+        return await GetByIdAsync(meeting.Id);
+    }
+
+    public async Task<DeleteResult> DeleteVenueAsync(Guid id)
+    {
+        var venue = await _db.Venues.FirstOrDefaultAsync(item => item.Id == id);
+        if (venue is null) return DeleteResult.NotFound;
+        if (await _db.Meetings.AnyAsync(meeting => meeting.VenueId == id))
+            return DeleteResult.HasDependencies;
+
+        _db.Venues.Remove(venue);
+        await _db.SaveChangesAsync();
+        return DeleteResult.Deleted;
+    }
+
+    public async Task<DeleteResult> DeleteMeetingAsync(Guid id)
+    {
+        var meeting = await _db.Meetings.FirstOrDefaultAsync(item => item.Id == id);
+        if (meeting is null) return DeleteResult.NotFound;
+
+        var hasDependencies = await _db.Sessions.AnyAsync(item => item.MeetingId == id)
+            || await _db.Registrations.AnyAsync(item => item.MeetingId == id)
+            || await _db.Feedback.AnyAsync(item => item.MeetingId == id)
+            || await _db.MeetingTasks.AnyAsync(item => item.MeetingId == id);
+        if (hasDependencies) return DeleteResult.HasDependencies;
+
+        _db.Meetings.Remove(meeting);
+        await _db.SaveChangesAsync();
+        return DeleteResult.Deleted;
+    }
+
     public async Task<Meeting?> UpdateAsync(
         Guid id,
         string title,
