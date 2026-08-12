@@ -5,6 +5,10 @@ namespace MeetingsManager.Mappings;
 
 public static class ContractMappings
 {
+    public static MeetingsManager.Contracts.VenueDto ToManagerDto(
+        this DataAccessor.Contracts.VenueDetailsDto venue) =>
+        new(venue.Id, venue.Name, venue.Address, venue.City, venue.Capacity);
+
     public static MeetingListItemDto ToManagerDto(this MeetingSummaryDto meeting) =>
         new(
             meeting.Id,

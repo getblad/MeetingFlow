@@ -15,6 +15,19 @@ public class RegistrationsManagerClient
         return await DownstreamResult<CreateRegistrationResult>.FromResponseAsync(response);
     }
 
+    public async Task<DownstreamResult<AttendeeDto>> CreateAttendeeAsync(
+        RegistrationsManager.Contracts.CreateAttendeeRequest request)
+    {
+        using var response = await _http.PostAsJsonAsync("/attendees", request);
+        return await DownstreamResult<AttendeeDto>.FromResponseAsync(response);
+    }
+
+    public async Task<DownstreamStatus> DeleteAttendeeAsync(Guid id)
+    {
+        using var response = await _http.DeleteAsync($"/attendees/{id}");
+        return await DownstreamStatus.FromResponseAsync(response);
+    }
+
     public async Task<IReadOnlyList<RegistrationDto>> GetRegistrationsByMeetingAsync(
         Guid meetingId)
         => await _http.GetFromJsonAsync<List<RegistrationDto>>(

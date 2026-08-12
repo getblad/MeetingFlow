@@ -51,6 +51,71 @@ app.MapGet("/data/meetings/{id:guid}", async (Guid id, MeetingsRepository r) =>
 app.MapGet("/data/admin/meetings", async (MeetingsRepository r) =>
     Results.Ok((await r.GetAllAsync()).Select(m => m.ToAdminDto())));
 
+app.MapPost("/data/venues", async (CreateVenueRequest body, MeetingsRepository r) =>
+{
+    if (string.IsNullOrWhiteSpace(body.Name)
+        || string.IsNullOrWhiteSpace(body.Address)
+        || string.IsNullOrWhiteSpace(body.City)
+        || body.Capacity <= 0)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["venue"] = ["Name, address, city and a positive capacity are required."]
+        });
+    }
+
+    var venue = await r.CreateVenueAsync(new Venue
+    {
+        Id = Guid.NewGuid(),
+        Name = body.Name.Trim(),
+        Address = body.Address.Trim(),
+        City = body.City.Trim(),
+        Capacity = body.Capacity
+    });
+    return Results.Created($"/data/venues/{venue.Id}", venue.ToDto());
+});
+
+app.MapDelete("/data/venues/{id:guid}", async (Guid id, MeetingsRepository r) =>
+    ToDeleteResult(
+        await r.DeleteVenueAsync(id),
+        "Venue is used by one or more meetings."));
+
+app.MapPost("/data/meetings", async (CreateMeetingRequest body, MeetingsRepository r) =>
+{
+    if (string.IsNullOrWhiteSpace(body.Title)
+        || string.IsNullOrWhiteSpace(body.Status)
+        || body.VenueId == Guid.Empty
+        || body.StartsAt >= body.EndsAt)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["meeting"] =
+            ["Title, status, venue and a valid time range are required."]
+        });
+    }
+
+    var meeting = await r.CreateMeetingAsync(new Meeting
+    {
+        Id = Guid.NewGuid(),
+        Title = body.Title.Trim(),
+        Description = body.Description,
+        Status = body.Status.Trim(),
+        StartsAt = body.StartsAt,
+        EndsAt = body.EndsAt,
+        CreatedAt = DateTimeOffset.UtcNow,
+        VenueId = body.VenueId
+    });
+
+    return meeting is null
+        ? Results.NotFound(new { error = "Venue not found" })
+        : Results.Created($"/data/meetings/{meeting.Id}", meeting.ToDetailsDto());
+});
+
+app.MapDelete("/data/meetings/{id:guid}", async (Guid id, MeetingsRepository r) =>
+    ToDeleteResult(
+        await r.DeleteMeetingAsync(id),
+        "Meeting has related sessions, registrations, feedback or tasks."));
+
 app.MapGet("/data/meetings/{id:guid}/registration-context", async (
     Guid id,
     MeetingsRepository r) =>
@@ -121,6 +186,36 @@ app.MapGet("/data/attendees/{id:guid}/contact", async (Guid id, RegistrationsRep
         ? Results.Ok(attendee.ToContactDto())
         : Results.NotFound());
 
+app.MapPost("/data/attendees", async (CreateAttendeeRequest body, RegistrationsRepository r) =>
+{
+    if (string.IsNullOrWhiteSpace(body.FullName)
+        || string.IsNullOrWhiteSpace(body.Email)
+        || !body.Email.Contains('@', StringComparison.Ordinal))
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["attendee"] = ["FullName and a valid email are required."]
+        });
+    }
+
+    var attendee = await r.CreateAttendeeAsync(new Attendee
+    {
+        Id = Guid.NewGuid(),
+        FullName = body.FullName.Trim(),
+        Email = body.Email.Trim(),
+        Phone = body.Phone,
+        Company = body.Company
+    });
+    return Results.Created(
+        $"/data/attendees/{attendee.Id}",
+        attendee.ToDetailsDto());
+});
+
+app.MapDelete("/data/attendees/{id:guid}", async (Guid id, RegistrationsRepository r) =>
+    ToDeleteResult(
+        await r.DeleteAttendeeAsync(id),
+        "Attendee has related registrations or feedback."));
+
 // Feedback repository endpoints.
 app.MapGet("/data/feedback/by-meeting/{meetingId:guid}", async (Guid meetingId, FeedbackRepository r) =>
     Results.Ok((await r.GetByMeetingAsync(meetingId)).Select(feedback => feedback.ToDto())));
@@ -176,6 +271,15 @@ app.MapDelete("/data/tasks/{id:guid}", async (Guid id, MeetingTasksRepository r)
     await r.DeleteAsync(id) ? Results.NoContent() : Results.NotFound());
 
 app.Run();
+
+static IResult ToDeleteResult(DeleteResult result, string conflictMessage) =>
+    result switch
+    {
+        DeleteResult.Deleted => Results.NoContent(),
+        DeleteResult.NotFound => Results.NotFound(),
+        DeleteResult.HasDependencies => Results.Conflict(new { error = conflictMessage }),
+        _ => Results.StatusCode(StatusCodes.Status500InternalServerError)
+    };
 
 // WebApplicationFactory uses this entry point to start the complete HTTP
 // component in the test process.

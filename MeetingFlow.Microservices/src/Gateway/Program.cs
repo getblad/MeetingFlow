@@ -28,6 +28,28 @@ app.UseCors();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Gateway" }));
 
+app.MapPost("/venues", async (
+    Gateway.Contracts.CreateVenueRequest request,
+    MeetingsManagerClient client) =>
+{
+    var downstream = await client.CreateVenueAsync(
+        new MeetingsManager.Contracts.CreateVenueRequest(
+            request.Name,
+            request.Address,
+            request.City,
+            request.Capacity));
+
+    return downstream.IsSuccess && downstream.Value is not null
+        ? Results.Created($"/venues/{downstream.Value.Id}", downstream.Value.ToPublicDto())
+        : ToErrorResult(downstream);
+});
+
+app.MapDelete("/venues/{id:guid}", async (Guid id, MeetingsManagerClient client) =>
+{
+    var downstream = await client.DeleteVenueAsync(id);
+    return downstream.IsSuccess ? Results.NoContent() : ToErrorStatus(downstream);
+});
+
 app.MapGet("/meetings", async (MeetingsManagerClient client) =>
     Results.Ok((await client.GetAllAsync()).Select(meeting => meeting.ToPublicDto())));
 
@@ -35,6 +57,32 @@ app.MapGet("/meetings/{id:guid}", async (Guid id, MeetingsManagerClient client) 
     await client.GetByIdAsync(id) is { } meeting
         ? Results.Ok(meeting.ToPublicDto())
         : Results.NotFound());
+
+app.MapPost("/meetings", async (
+    Gateway.Contracts.CreateMeetingRequest request,
+    MeetingsManagerClient client) =>
+{
+    var downstream = await client.CreateMeetingAsync(
+        new MeetingsManager.Contracts.CreateMeetingRequest(
+            request.Title,
+            request.Description,
+            request.Status,
+            request.StartsAt,
+            request.EndsAt,
+            request.VenueId));
+
+    return downstream.IsSuccess && downstream.Value is not null
+        ? Results.Created(
+            $"/meetings/{downstream.Value.Id}",
+            downstream.Value.ToPublicDto())
+        : ToErrorResult(downstream);
+});
+
+app.MapDelete("/meetings/{id:guid}", async (Guid id, MeetingsManagerClient client) =>
+{
+    var downstream = await client.DeleteMeetingAsync(id);
+    return downstream.IsSuccess ? Results.NoContent() : ToErrorStatus(downstream);
+});
 
 app.MapPut("/meetings/{id:guid}", async (
     Guid id,
@@ -63,6 +111,32 @@ app.MapGet("/speakers/{id:guid}", async (Guid id, MeetingsManagerClient client) 
     await client.GetSpeakerByIdAsync(id) is { } speaker
         ? Results.Ok(speaker.ToPublicDto())
         : Results.NotFound());
+
+app.MapPost("/attendees", async (
+    Gateway.Contracts.CreateAttendeeRequest request,
+    RegistrationsManagerClient client) =>
+{
+    var downstream = await client.CreateAttendeeAsync(
+        new RegistrationsManager.Contracts.CreateAttendeeRequest(
+            request.FullName,
+            request.Email,
+            request.Phone,
+            request.Company));
+
+    return downstream.IsSuccess && downstream.Value is not null
+        ? Results.Created(
+            $"/attendees/{downstream.Value.Id}",
+            downstream.Value.ToPublicDto())
+        : ToErrorResult(downstream);
+});
+
+app.MapDelete("/attendees/{id:guid}", async (
+    Guid id,
+    RegistrationsManagerClient client) =>
+{
+    var downstream = await client.DeleteAttendeeAsync(id);
+    return downstream.IsSuccess ? Results.NoContent() : ToErrorStatus(downstream);
+});
 
 app.MapPost("/registrations", async (
     Gateway.Contracts.CreateRegistrationRequest request,
@@ -124,6 +198,11 @@ app.MapPost("/chat", async (
 app.Run();
 
 static IResult ToErrorResult<T>(DownstreamResult<T> downstream) =>
+    downstream.Error is { } error
+        ? Results.Json(error, statusCode: (int)downstream.StatusCode)
+        : Results.StatusCode((int)downstream.StatusCode);
+
+static IResult ToErrorStatus(DownstreamStatus downstream) =>
     downstream.Error is { } error
         ? Results.Json(error, statusCode: (int)downstream.StatusCode)
         : Results.StatusCode((int)downstream.StatusCode);

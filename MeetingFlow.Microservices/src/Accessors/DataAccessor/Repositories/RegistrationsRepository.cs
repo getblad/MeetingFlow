@@ -28,6 +28,27 @@ public class RegistrationsRepository
         return registration;
     }
 
+    public async Task<Attendee> CreateAttendeeAsync(Attendee attendee)
+    {
+        _db.Attendees.Add(attendee);
+        await _db.SaveChangesAsync();
+        return attendee;
+    }
+
+    public async Task<DeleteResult> DeleteAttendeeAsync(Guid id)
+    {
+        var attendee = await _db.Attendees.FirstOrDefaultAsync(item => item.Id == id);
+        if (attendee is null) return DeleteResult.NotFound;
+
+        var hasDependencies = await _db.Registrations.AnyAsync(item => item.AttendeeId == id)
+            || await _db.Feedback.AnyAsync(item => item.AttendeeId == id);
+        if (hasDependencies) return DeleteResult.HasDependencies;
+
+        _db.Attendees.Remove(attendee);
+        await _db.SaveChangesAsync();
+        return DeleteResult.Deleted;
+    }
+
     public Task<Attendee?> GetAttendeeAsync(Guid id) =>
         _db.Attendees.FirstOrDefaultAsync(a => a.Id == id);
 

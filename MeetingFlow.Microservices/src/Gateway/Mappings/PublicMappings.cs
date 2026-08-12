@@ -2,6 +2,10 @@ namespace Gateway.Mappings;
 
 public static class PublicMappings
 {
+    public static Gateway.Contracts.VenueDto ToPublicDto(
+        this MeetingsManager.Contracts.VenueDto venue) =>
+        new(venue.Id, venue.Name, venue.Address, venue.City, venue.Capacity);
+
     public static Gateway.Contracts.MeetingListItemDto ToPublicDto(
         this MeetingsManager.Contracts.MeetingListItemDto meeting) =>
         new(
@@ -66,6 +70,15 @@ public static class PublicMappings
                     registration.Attendee.Id,
                     registration.Attendee.FullName,
                     registration.Attendee.Company));
+
+    public static Gateway.Contracts.AttendeeDto ToPublicDto(
+        this RegistrationsManager.Contracts.AttendeeDto attendee) =>
+        new(
+            attendee.Id,
+            attendee.FullName,
+            attendee.Email,
+            attendee.Phone,
+            attendee.Company);
 
     public static Gateway.Contracts.CreateRegistrationResult ToPublicDto(
         this RegistrationsManager.Contracts.CreateRegistrationResult result) =>

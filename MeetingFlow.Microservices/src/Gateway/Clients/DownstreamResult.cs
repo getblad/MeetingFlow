@@ -29,3 +29,20 @@ public sealed record DownstreamResult<T>(
         return new DownstreamResult<T>(response.StatusCode, default, error);
     }
 }
+
+public sealed record DownstreamStatus(HttpStatusCode StatusCode, JsonElement? Error)
+{
+    public bool IsSuccess => (int)StatusCode is >= 200 and <= 299;
+
+    public static async Task<DownstreamStatus> FromResponseAsync(
+        HttpResponseMessage response)
+    {
+        JsonElement? error = null;
+        if (!response.IsSuccessStatusCode && response.Content.Headers.ContentLength is not 0)
+        {
+            error = await response.Content.ReadFromJsonAsync<JsonElement>();
+        }
+
+        return new DownstreamStatus(response.StatusCode, error);
+    }
+}

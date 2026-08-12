@@ -5,6 +5,9 @@ namespace DataAccessor.Mappings;
 
 public static class ContractMappings
 {
+    public static VenueDetailsDto ToDto(this Venue venue) =>
+        new(venue.Id, venue.Name, venue.Address, venue.City, venue.Capacity);
+
     public static MeetingSummaryDto ToSummaryDto(this Meeting meeting) =>
         new(
             meeting.Id,
@@ -88,6 +91,14 @@ public static class ContractMappings
 
     public static AttendeeContactDto ToContactDto(this Attendee attendee) =>
         new(attendee.Id, attendee.FullName, attendee.Email);
+
+    public static AttendeeDetailsDto ToDetailsDto(this Attendee attendee) =>
+        new(
+            attendee.Id,
+            attendee.FullName,
+            attendee.Email,
+            attendee.Phone,
+            attendee.Company);
 
     public static RegistrationDto ToDto(this Registration registration) =>
         new(

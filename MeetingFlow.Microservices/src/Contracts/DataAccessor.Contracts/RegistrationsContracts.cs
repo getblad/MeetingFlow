@@ -10,6 +10,19 @@ public sealed record AttendeeContactDto(
     string FullName,
     string Email);
 
+public sealed record AttendeeDetailsDto(
+    Guid Id,
+    string FullName,
+    string Email,
+    string? Phone,
+    string? Company);
+
+public sealed record CreateAttendeeRequest(
+    string FullName,
+    string Email,
+    string? Phone,
+    string? Company);
+
 public sealed record RegistrationDto(
     Guid Id,
     Guid MeetingId,

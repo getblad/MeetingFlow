@@ -2,6 +2,7 @@ using MeetingsManager.Clients;
 using MeetingsManager.Contracts;
 using MeetingsManager.Mappings;
 using SchedulingEngine.Contracts;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,75 @@ app.MapGet("/meetings/{id:guid}", async (Guid id, DataAccessorClient data) =>
     await data.GetMeetingAsync(id) is { } meeting
         ? Results.Ok(meeting.ToManagerDto())
         : Results.NotFound());
+
+app.MapPost("/venues", async (CreateVenueRequest request, DataAccessorClient data) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Name)
+        || string.IsNullOrWhiteSpace(request.Address)
+        || string.IsNullOrWhiteSpace(request.City)
+        || request.Capacity <= 0)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["venue"] = ["Name, address, city and a positive capacity are required."]
+        });
+    }
+
+    var downstream = await data.CreateVenueAsync(
+        new DataAccessor.Contracts.CreateVenueRequest(
+            request.Name,
+            request.Address,
+            request.City,
+            request.Capacity));
+
+    return downstream.StatusCode == HttpStatusCode.Created && downstream.Value is not null
+        ? Results.Created($"/venues/{downstream.Value.Id}", downstream.Value.ToManagerDto())
+        : Results.StatusCode((int)downstream.StatusCode);
+});
+
+app.MapDelete("/venues/{id:guid}", async (Guid id, DataAccessorClient data) =>
+    ToDeleteResult(
+        await data.DeleteVenueAsync(id),
+        "Venue is used by one or more meetings."));
+
+app.MapPost("/meetings", async (CreateMeetingRequest request, DataAccessorClient data) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Title)
+        || string.IsNullOrWhiteSpace(request.Status)
+        || request.VenueId == Guid.Empty
+        || request.StartsAt >= request.EndsAt)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["meeting"] =
+            ["Title, status, venue and a valid time range are required."]
+        });
+    }
+
+    var downstream = await data.CreateMeetingAsync(
+        new DataAccessor.Contracts.CreateMeetingRequest(
+            request.Title,
+            request.Description,
+            request.Status,
+            request.StartsAt,
+            request.EndsAt,
+            request.VenueId));
+
+    return downstream.StatusCode switch
+    {
+        HttpStatusCode.Created when downstream.Value is not null =>
+            Results.Created(
+                $"/meetings/{downstream.Value.Id}",
+                downstream.Value.ToManagerDto()),
+        HttpStatusCode.NotFound => Results.NotFound(new { error = "Venue not found" }),
+        _ => Results.StatusCode((int)downstream.StatusCode)
+    };
+});
+
+app.MapDelete("/meetings/{id:guid}", async (Guid id, DataAccessorClient data) =>
+    ToDeleteResult(
+        await data.DeleteMeetingAsync(id),
+        "Meeting has related sessions, registrations, feedback or tasks."));
 
 app.MapGet("/admin/meetings", async (DataAccessorClient data) =>
     Results.Ok((await data.GetAdminMeetingsAsync()).Select(meeting => meeting.ToManagerDto())));
@@ -97,3 +167,12 @@ app.MapGet("/speakers/{id:guid}", async (Guid id, DataAccessorClient data) =>
         : Results.NotFound());
 
 app.Run();
+
+static IResult ToDeleteResult(HttpStatusCode statusCode, string conflictMessage) =>
+    statusCode switch
+    {
+        HttpStatusCode.NoContent => Results.NoContent(),
+        HttpStatusCode.NotFound => Results.NotFound(),
+        HttpStatusCode.Conflict => Results.Conflict(new { error = conflictMessage }),
+        _ => Results.StatusCode((int)statusCode)
+    };
