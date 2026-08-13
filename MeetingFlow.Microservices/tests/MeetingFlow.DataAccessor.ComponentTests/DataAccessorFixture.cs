@@ -24,7 +24,8 @@ public sealed class DataAccessorFixture : IAsyncLifetime
     public HttpClient Client => _client
         ?? throw new InvalidOperationException("The fixture has not been initialized.");
 
-    public async Task SeedAsync(params object[] entities)
+    public async Task SeedAsync<TEntity>(params TEntity[] entities)
+        where TEntity : class
     {
         if (_application is null)
         {
@@ -34,7 +35,7 @@ public sealed class DataAccessorFixture : IAsyncLifetime
         using var scope = _application.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MeetingFlowDbContext>();
 
-        db.AddRange(entities);
+        db.Set<TEntity>().AddRange(entities);
         await db.SaveChangesAsync();
     }
 

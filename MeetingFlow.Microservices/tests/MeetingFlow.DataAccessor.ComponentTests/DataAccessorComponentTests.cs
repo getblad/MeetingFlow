@@ -138,7 +138,9 @@ public sealed class DataAccessorComponentTests(DataAccessorFixture fixture)
                 Address = "2 Test Street",
                 City = "Test City",
                 Capacity = 10
-            },
+            });
+
+        await fixture.SeedAsync(
             new Meeting
             {
                 Id = meetingId,
@@ -149,7 +151,9 @@ public sealed class DataAccessorComponentTests(DataAccessorFixture fixture)
                 EndsAt = now.AddDays(20).AddHours(2),
                 CreatedAt = now,
                 VenueId = venueId
-            },
+            });
+
+        await fixture.SeedAsync(
             new Attendee
             {
                 Id = attendeeId,
