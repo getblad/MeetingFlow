@@ -46,7 +46,7 @@ Identify:
 - asynchronous messaging dependencies;
 - infrastructure owned by or required by each service.
 
-Before writing tests, complete this small table:
+Before writing tests, think about how you would fill out this table:
 
 | Area | Proposed test level | Entry point | What should be real? | What can be replaced? |
 | --- | --- | --- | --- | --- |
@@ -56,56 +56,28 @@ Before writing tests, complete this small table:
 | Notification delivery |  |  |  |  |
 | Complete registration flow |  |  |  |  |
 
-There may be several valid answers. Be ready to explain why your chosen
-boundary provides enough confidence without starting unnecessary parts of the
-system.
-
 ---
 
 ## Part 2 — Add component tests
 
 Choose at least two microservices and cover them with component tests.
 
-Possible candidates:
+Possible candidates include `SchedulingEngine`, `DataAccessor`, and
+`RegistrationsManager`, but the choice and the scenarios are yours.
 
-### SchedulingEngine
+For each selected service, first identify its responsibility and choose a small
+set of behaviors that gives useful confidence in that responsibility. Decide
+which dependencies should remain real, which may be controlled or replaced,
+and what observable result will prove the behavior.
 
-Test observable scheduling behavior, for example:
+Choose `Fact`, `Theory`, or another suitable test form based on the scenarios
+you selected. The test form should make the intent clearer rather than satisfy
+an artificial requirement.
 
-- overlapping sessions in the same room;
-- adjacent sessions that should not conflict;
-- invalid time ranges;
-- capacity calculation and invalid capacity input.
-
-At least one group of similar cases should be implemented as an xUnit
-`Theory`, not as several duplicated `Fact` methods.
-
-### DataAccessor
-
-Test persistence behavior, for example:
-
-- reading an existing meeting with related data;
-- creating a registration and reading it back;
-- requesting data that does not exist;
-- ensuring internal model fields do not leak through HTTP.
-
-Decide what kind of database gives the test meaningful confidence and how its
-data should be isolated and cleaned up. Each test should own the data it asserts
-on and must not depend on production seed data or test execution order.
-
-### RegistrationsManager
-
-Test registration orchestration, for example:
-
-- successful registration;
-- an attendee who is already registered;
-- a meeting with no available capacity;
-- ensuring persistence and event publication do not happen after a rejected
-  operation.
-
-Think about every dependency of the Manager. Decide which dependencies need to
-be real for these scenarios, which can be controlled, and how you will observe
-outgoing calls and events.
+If a selected component works with persistent data, decide what kind of database
+provides meaningful confidence and how the data will be isolated and cleaned
+up. Each test should own the data it asserts on and must not depend on production
+seed data or test execution order.
 
 ### Component-test expectations
 
@@ -182,27 +154,3 @@ Do not repeat every component-test scenario here. One critical happy path is
 enough to prove that the deployed system works together.
 
 ---
-
-## What to submit
-
-1. The completed strategy table from Part 1.
-2. Component tests for at least two services, including at least one `Theory`.
-3. One targeted integration test between real components.
-4. One backend system test against the locally running environment.
-5. A short `TESTING.md` with:
-   - commands for each test level;
-   - Docker requirements;
-   - real and replaced dependencies;
-   - local environment startup and cleanup behavior.
-
----
-
-## Summary
-
-| Part | Task |
-| --- | --- |
-| 0 | Run and inspect the system |
-| 1 | Design the test strategy |
-| 2 | Add component tests |
-| 3 | Test one real integration |
-| 4 | Test the complete backend flow |
