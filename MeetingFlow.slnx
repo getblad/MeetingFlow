@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/MeetingFlow.ClientServer/">
     <Project Path="MeetingFlow.ClientServer/MeetingFlow.Api/MeetingFlow.Api.csproj" />
+    <Project Path="MeetingFlow.ClientServer/MeetingFlow.Api.Tests/MeetingFlow.Api.Tests.csproj" />
   </Folder>
   <Project Path="MeetingFlow.Monolith/MeetingFlow.Monolith.csproj" />
   <Folder Name="/MeetingFlow.Microservices/">
