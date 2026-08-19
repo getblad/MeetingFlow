@@ -1,8 +1,9 @@
 # Pre-Lecture Homework: End-to-End Testing with Playwright
 
-> **Goal:** Set up Playwright and write two end-to-end tests against the running
-> MeetingFlow app. Both will fail. Each failure is a real bug in this repository —
-> read the failure, find the cause, and fix the implementation until the test passes.
+> **Goal:** Set up Playwright, read a little of the code, then write two end-to-end
+> tests against the running MeetingFlow app. Both will fail. Each failure is a real
+> bug in this repository — read the failure, find the cause, and fix the
+> implementation until the test passes.
 >
 > Unlike the previous homework, this one has right answers. Bring your fixes.
 
@@ -19,7 +20,7 @@ value: it is the only layer that notices when two correct-looking screens disagr
 
 ---
 
-## Part 0 — Setup (~15 minutes)
+## Part 0 — Setup (~10 minutes)
 
 You need **three terminals**.
 
@@ -53,67 +54,63 @@ If it fails, nothing below will work — check both servers before continuing.
 
 ---
 
-## Part 1 — Read the example (~10 minutes)
+## Part 1 — Read the code (~10 minutes)
 
-Open `e2e/tests/smoke.spec.ts`. Every test you write has this shape:
+Open these files and read them. No changes yet.
 
-| Piece                       | What it is                                                                                    |
-| --------------------------- | --------------------------------------------------------------------------------------------- |
-| `test("name", async ...)`   | One scenario. Name it after the behaviour, not the mechanics.                                  |
-| `{ page }`                  | A **fixture** — each test gets a fresh browser context, so tests do not share state.            |
-| `page.goto("/")`            | Relative to `baseURL` in `playwright.config.ts`.                                                |
-| `page.getByRole(...)`       | A **locator** — a description of an element. Nothing has run yet.                               |
-| `await expect(...).toBe...` | A **web-first assertion** — retries until the condition holds or the timeout expires.           |
+### What to look at
 
-### The one idea that matters: auto-waiting
+| File                                                  | What to look at                                                                                          |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `MeetingFlow.Api/Endpoints/MeetingsEndpoints.cs`      | `GET /api/meetings` — what decides which meetings a visitor gets back?                                    |
+| `MeetingFlow.Api/Endpoints/DashboardEndpoints.cs`     | The same question, asked of a different endpoint. Do the two answers agree with each other?               |
+| `MeetingFlow.Web/src/pages/CreateRegistrationPage.tsx` | Read the `<h1>` out loud. Then look at how each `<label>` is connected to its `<select>` or `<input>`.     |
+| `MeetingFlow.Api/Data/SeedData.cs`                    | Of the five seeded meetings, which are `Published`? Which one is `Draft`, and which is `Cancelled`?       |
+| `e2e/playwright.config.ts`                            | What is `baseURL`? What does `trace: "retain-on-failure"` give you when something breaks?                  |
 
-You never need `waitForTimeout` or a retry loop. Locators resolve when used, and
-web-first assertions retry on their own.
+### Reflection questions (write down your answers)
 
-```ts
-// ✗ Don't
-await page.waitForTimeout(2000);
-expect(await page.locator("h1").textContent()).toBe("Meetings");
+1. Two endpoints in the same API answer the question "which meetings are public?".
+   Do they answer it the same way? If not — which screen would a user believe?
 
-// ✓ Do
-await expect(page.getByRole("heading", { level: 1 })).toHaveText("Meetings");
-```
+2. Open `/register` in your browser and click on the word **Meeting** above the
+   dropdown. Does the dropdown get focus? What does that tell you about the markup?
 
-If you reach for a sleep, it means you have not identified the state you are waiting for.
-
-### Choosing a locator
-
-Prefer what the **user** sees. A role-based locator breaks when the behaviour changes;
-a CSS locator breaks when someone renames a class. Only one of those is a real signal.
-
-| Locator                     | Use for                              |
-| --------------------------- | ------------------------------------ |
-| `getByRole(role, { name })` | Buttons, links, headings             |
-| `getByLabel(text)`          | Form fields                          |
-| `getByText(text)`           | Static, user-visible copy            |
-| `locator(css)`              | **Last resort** — write down why     |
-
-Assertions you will need: `toBeVisible()`, `toHaveText()`, `toHaveCount()`.
-`toHaveCount(0)` is how you assert something is **absent**.
-
-### Running tests
-
-`npm test` (headless) · `npm run test:ui` (interactive) · `npm run report` (last run).
-
-**Use UI mode while writing.** It shows the DOM at every step and lets you try locators
-against the live page. It will save you most of the time this homework costs.
+3. Both of the things you just noticed are visible in a browser inside a minute.
+   Why do you think neither has been caught?
 
 ---
 
-## Part 2 — Test 1: the public catalogue (~15 minutes)
+## Part 2 — Playwright in five minutes (~5 minutes)
+
+Open `e2e/tests/smoke.spec.ts`. Every test you write has this shape:
+
+| Piece                       | What it is                                                                            |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `test("name", async ...)`   | One scenario. Name it after the behaviour, not the mechanics.                             |
+| `{ page }`                  | A **fixture** — each test gets a fresh browser context, so tests do not share state.       |
+| `page.goto("/")`            | Relative to `baseURL` in `playwright.config.ts`.                                          |
+| `page.getByRole(...)`       | A **locator** — a description of an element. Nothing has run yet.                          |
+| `await expect(...).toBe...` | A **web-first assertion** — retries until the condition holds or the timeout expires.      |
+
+**Locators, in order of preference:** `getByRole(role, { name })` for buttons, links and
+headings · `getByLabel` for form fields · `getByText` for static copy · `locator(css)` as a
+**last resort**. A role-based locator breaks when the behaviour changes; a CSS locator
+breaks when someone renames a class. Only one of those is a real signal.
+
+**Assertions you will need:** `toBeVisible()`, `toHaveText()`, `toHaveCount()`.
+`toHaveCount(0)` is how you assert something is **absent**.
+
+**Running:** `npm test` (headless) · `npm run test:ui` (interactive) · `npm run report`.
+
+---
+
+## Part 3 — Test 1: the public catalogue (~15 minutes)
 
 ### The requirement
 
 > A visitor to the public meeting list should only see meetings they can actually
 > attend. Meetings that are still `Draft` or have been `Cancelled` are not public.
-
-Read `MeetingFlow.Api/Data/SeedData.cs` and note which of the five seeded meetings
-are `Published`, which is `Draft`, and which is `Cancelled`.
 
 ### Your task
 
@@ -136,9 +133,8 @@ Read the reporter output first, then `npm run report` and open the **trace**. In
 trace's **Network** tab, find the request the page made on load: how many meetings came
 back, and what are their `status` values?
 
-Then compare two files: `MeetingFlow.Api/Endpoints/MeetingsEndpoints.cs` and
-`MeetingFlow.Api/Endpoints/DashboardEndpoints.cs`. How does each one decide which
-meetings are public? Write down where the bug is before you look at the answer.
+Then go back to the two endpoint files from Part 1. Write down where the bug is before
+you open the answer.
 
 <details>
 <summary><strong>Bug 1 — the fix</strong></summary>
@@ -166,7 +162,7 @@ would have to change for each to be possible.
 
 ---
 
-## Part 3 — Test 2: registering for a meeting (~20 minutes)
+## Part 4 — Test 2: registering for a meeting (~20 minutes)
 
 ### The requirement
 
@@ -209,7 +205,8 @@ Fix the article: `Register for a Meeting`.
 ### When it fails the second time
 
 Playwright cannot find a form field labelled "Meeting" — even though you can plainly
-see the word above the dropdown. **This is the interesting one.**
+see the word above the dropdown. **This is the interesting one**, and question 2 in
+Part 1 was a hint.
 
 Inspect the form in dev tools, or open the DOM snapshot in the trace, and look at how
 the `<label>` and the `<select>` relate to each other.
@@ -249,14 +246,36 @@ Wire up all four fields in `CreateRegistrationPage.tsx`:
 
 ---
 
-## Part 4 — Bonus (~10 minutes, optional)
+## Tips
 
-**4a.** Now that the catalogue is fixed, open `/dashboard`. Does "Total Meetings" agree
+1. **Write tests in UI mode.** `npm run test:ui` shows the DOM at every step and lets
+   you try locators against the live page. It will save you most of the time this
+   homework costs.
+2. **Never sleep.** Locators resolve when used and web-first assertions retry on their
+   own. If you reach for `waitForTimeout`, you have not identified the state you are
+   waiting for.
+3. **Name the test after the behaviour**, not the mechanics. "a visitor can register
+   for a published meeting" — not "test register page".
+4. **`getByRole` and `getByLabel` first, CSS last.** When you do fall back to CSS,
+   write down why. That note is usually a bug report about the markup.
+5. **`getByLabel` only works if the markup is correct.** When it cannot find a field
+   you can plainly see, suspect the page before you suspect yourself — that is Part 4.
+6. **Generate unique data per run** — `` `e2e-${Date.now()}@…` `` — so a rerun does not
+   collide with the last one.
+7. **When it fails, read the trace before you read the code.** `npm run report`, open
+   the failed test, then the trace: a DOM snapshot per step, plus the Network tab that
+   shows exactly what the API returned.
+
+---
+
+## Part 5 — Bonus (~10 minutes, optional)
+
+**5a.** Now that the catalogue is fixed, open `/dashboard`. Does "Total Meetings" agree
 with what a visitor can see on `/`? Write a test that compares the two screens, then
 decide what the correct fix is — there is more than one defensible answer, and choosing
 is a human job.
 
-**4b.** Hiding a meeting from the list is not the same as making it non-public. Try
+**5b.** Hiding a meeting from the list is not the same as making it non-public. Try
 navigating straight to `/meetings/b2000000-0000-0000-0000-000000000005` (the cancelled
 meeting). Should that work? Argue either way.
 
@@ -266,7 +285,7 @@ meeting). Should that work? Argue either way.
 
 1. **Your two test files** — `meetings.spec.ts`, `registration.spec.ts`
 2. **Your three fixes**, on a branch
-3. **Written answers** to the questions in Parts 2 and 3
+3. **Written answers** to the reflection questions in Parts 1, 3 and 4
 4. **One sentence** answering this: *how did you know these were the things worth
    testing?* You were told. That is the question the lecture is about.
 
@@ -276,11 +295,12 @@ meeting). Should that work? Argue either way.
 
 | #   | Task                                                          | Time   | Required? |
 | --- | ------------------------------------------------------------- | ------ | --------- |
-| 0   | Setup — run the app, install Playwright, green smoke test      | 15 min | Yes       |
-| 1   | Read the example test; try UI mode                             | 10 min | Yes       |
-| 2   | Test 1 — catalogue → **Bug 1** (public list)                   | 15 min | Yes       |
-| 3   | Test 2 — registration → **Bug 2a + 2b** (heading, labels)      | 20 min | Yes       |
-| 4   | Bonus — dashboard consistency, direct links                    | 10 min | Bonus     |
+| 0   | Setup — run the app, install Playwright, green smoke test      | 10 min | Yes       |
+| 1   | Read the code, answer the reflection questions                 | 10 min | Yes       |
+| 2   | Playwright in five minutes; try UI mode                        | 5 min  | Yes       |
+| 3   | Test 1 — catalogue → **Bug 1** (public list)                   | 15 min | Yes       |
+| 4   | Test 2 — registration → **Bug 2a + 2b** (heading, labels)      | 20 min | Yes       |
+| 5   | Bonus — dashboard consistency, direct links                    | 10 min | Bonus     |
 
 **Total: ~60 minutes** (70 with the bonus)
 
