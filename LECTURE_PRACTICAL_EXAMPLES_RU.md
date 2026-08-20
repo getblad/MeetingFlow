@@ -1,104 +1,18 @@
-# Практическая часть лекции: component, integration и system tests на примере MeetingFlow
-
-Этот файл — не конспект для участников, а закадровый текст для живой демонстрации.
-Фразы в блоках **«Говорю»** можно использовать почти дословно. Блоки
-**«Показываю»** подсказывают, какой файл или фрагмент кода открыть.
-
----
-
-## 1. Переход от теории к практике
-
-### Показываю
-
-- `MeetingFlow.Microservices/README.md`;
-- схему взаимодействия сервисов;
-- папку `MeetingFlow.Microservices/tests`.
-
-### Говорю
-
-> Мы разобрали определения и пирамиду тестирования. Теперь посмотрим, как эти
-> идеи выглядят в микросервисном проекте. Важно, что я не буду определять тип
-> теста только по используемой библиотеке. Testcontainers сам по себе не делает
-> тест интеграционным, а `WebApplicationFactory` сам по себе не делает тест
-> компонентным. Тип теста определяется выбранной границей: что мы считаем
-> системой под тестом, через какую границу в неё входим и какие части оставляем
-> реальными.
-
-> В MeetingFlow есть Gateway, Managers, Engines, Accessors, PostgreSQL и
-> RabbitMQ. Один и тот же registration flow можно проверить на разных уровнях.
-> Но цель пирамиды — не повторить весь набор сценариев на каждом уровне. Мы
-> хотим на каждом уровне получить уникальную уверенность за разумную цену.
-
-### Главная мысль перед демонстрацией
-
-```text
-Component test
-    проверяет один сервис через его внешнюю границу;
-    внутренности сервиса реальные;
-    внешние зависимости либо реальные и изолированные,
-    либо заменены управляемыми двойниками.
-
-Targeted integration test
-    проверяет конкретный стык нескольких реальных компонентов.
-
-System test
-    проверяет критический сценарий через публичную границу
-    полностью развёрнутой backend-системы.
-```
-
-> Терминология в разных компаниях может отличаться. Где-то тест Accessor плюс
-> PostgreSQL назовут integration test. Это не проблема, если команда явно
-> договорилась о границе. В этой лекции я называю его component test, потому что
-> продуктовая система под тестом — один DataAccessor, а PostgreSQL является его
-> инфраструктурной зависимостью.
-
----
-
-## 2. Сначала показываю общую стратегию, а не код
-
-### Показываю
-
-Архитектурный flow регистрации:
-
-```text
-Client
-  → Gateway
-    → RegistrationsManager
-      → DataAccessor → PostgreSQL
-      → SchedulingEngine
-      → RabbitMQ
-        → NotificationsAccessor → PostgreSQL
-```
-
-### Говорю
-
-> Если начать сразу писать системный тест на каждый возможный случай, мы
-> получим медленный и хрупкий набор. Поэтому сначала раскладываем риски по
-> уровням.
-
-- Алгоритм пересечения временных интервалов и расчёт свободных мест удобно
-  подробно проверять на уровне `SchedulingEngine`.
-- Реальные EF-запросы, маппинг и сохранение в PostgreSQL проверяем на границе
-  `DataAccessor`.
-- Ветвление registration use case и порядок downstream-вызовов проверяем на
-  уровне `RegistrationsManager` с управляемыми зависимостями.
-- Совместимость publisher, RabbitMQ, event contract и consumer проверяем одним
-  сфокусированным integration test.
-- Полную сборку подтверждаем одним критическим happy path через Gateway.
-
-> Обратите внимание: сценарии «неверный интервал», «участник уже
-> зарегистрирован» и «зал заполнен» не обязаны ещё раз подробно повторяться в
-> system suite. Их дешевле и точнее диагностировать ниже в пирамиде.
-
----
-
-## 3. Пример №1 — SchedulingEngine как stateless component
+## 1. SchedulingEngine через `WebApplicationFactory`
 
 ### Показываю
 
 1. `src/Engines/SchedulingEngine/Program.cs`;
 2. `tests/MeetingFlow.SchedulingEngine.ComponentTests/MeetingFlow.SchedulingEngine.ComponentTests.csproj`;
 3. `tests/MeetingFlow.SchedulingEngine.ComponentTests/SchedulingEngineComponentTests.cs`.
+
+В `.csproj` показываю `Microsoft.AspNetCore.Mvc.Testing` и project references на
+сам `SchedulingEngine` и его contracts.
+
+> Первый package даёт `WebApplicationFactory`. Project reference на production
+> сервис нужен, чтобы тип `Program` стал точкой входа тестового приложения, а
+> reference на contracts позволяет отправлять те же модели, что использует
+> реальный клиент.
 
 ### Что делает компонент
 
@@ -124,21 +38,6 @@ Client
 > По смыслу мы имитируем запрос, который в production пришёл бы от
 > MeetingsManager или RegistrationsManager. Дальше SchedulingEngine никуда не
 > ходит, поэтому подменять нечего.
-
-### Почему нужен `public partial class Program`
-
-Показываю конец production `Program.cs`:
-
-```csharp
-public partial class Program { }
-```
-
-### Говорю
-
-> В minimal API компилятор генерирует entry point. Эта пустая partial-декларация
-> делает тип `Program` доступным тестовому проекту, чтобы
-> `WebApplicationFactory<Program>` мог найти и запустить приложение. Она не
-> содержит тестовой логики и не меняет поведение production-сервиса.
 
 ### Показываю `Theory`
 
@@ -189,15 +88,6 @@ dotnet test \
 
 Или нажимаю Play возле конкретного теста в VS Code.
 
-### Что этот пример учит
-
-- component test может быть очень быстрым и не использовать Docker;
-- проверять сервис лучше через его публичную границу;
-- `WebApplicationFactory` запускает реальный ASP.NET Core pipeline;
-- похожие табличные случаи удобно выражать через `Theory`;
-- отсутствие инфраструктуры у компонента не превращает HTTP component test в
-  unit test.
-
 ### Альтернативы
 
 > Чистый алгоритм также можно покрыть unit tests, если вынести его в отдельный
@@ -209,7 +99,7 @@ dotnet test \
 
 ---
 
-## 4. Пример №2 — DataAccessor и настоящий PostgreSQL
+## 2. DataAccessor и настоящий PostgreSQL
 
 ### Показываю
 
@@ -317,13 +207,30 @@ builder.UseSetting("POSTGRES_CONN", _postgres.GetConnectionString());
 > значения. Это хороший признак самодостаточности: удаление или изменение seed
 > не должно менять результат теста.
 
-### Почему Arrange создаёт данные напрямую через EF
+### Как тест создаёт собственные данные
 
-Показываю `fixture.SeedAsync(...)`.
+Показываю generic helper из fixture:
+
+```csharp
+public async Task SeedAsync<TEntity>(params TEntity[] entities)
+    where TEntity : class
+{
+    using var scope = _application!.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<MeetingFlowDbContext>();
+
+    db.Set<TEntity>().AddRange(entities);
+    await db.SaveChangesAsync();
+}
+```
 
 > Для component test самого DataAccessor прямое создание EF entities допустимо:
 > база и EF model находятся внутри выбранной границы этого компонента. Так мы
 > можем точно подготовить граф, необходимый для проверки read endpoint.
+
+> Generic-параметр позволяет helper работать с любой EF entity без `object[]` и
+> runtime-проверок типов. Сущности разных типов передаются отдельными вызовами:
+> сначала `SeedAsync(venue)`, затем `SeedAsync(meeting)` и
+> `SeedAsync(attendee)`. Порядок повторяет foreign-key зависимости.
 
 > Это не означает, что прямой SQL или EF setup подходит каждому system test.
 > На уровне всей системы такой setup связывает тест с внутренней схемой чужого
@@ -388,36 +295,25 @@ dotnet test \
 После завершения suite показываю, что PostgreSQL Testcontainer и Ryuk больше не
 работают.
 
-### Что этот пример учит
-
-- инфраструктурная зависимость компонента может оставаться реальной;
-- Testcontainers даёт настоящий PostgreSQL и одноразовый lifecycle;
-- контейнер можно переиспользовать между тестами, не переиспользуя данные;
-- Respawn решает reset состояния, а не startup инфраструктуры;
-- каждый тест должен владеть данными, на которых делает assertions;
-- production seed не должен становиться скрытой fixture;
-- проверка DTO boundary так же важна, как проверка EF query.
-
-### Что было бы плохим паттерном
-
-- искать «первый meeting» из production seed и делать assertions на него;
-- рассчитывать, что тесты выполнятся в определённом порядке;
-- использовать одну локальную базу разработчика и очищать её целиком;
-- запускать новый PostgreSQL для каждого `Fact`, не измерив необходимость;
-- использовать EF InMemory provider и считать, что PostgreSQL integration уже
-  проверена;
-- добавлять фиксированные `Task.Delay`, чтобы «база успела».
-
 ---
 
-## 5. Пример №3 — RegistrationsManager с HTTP stubs и spy
+## 3. RegistrationsManager с HTTP stubs и spy
 
 ### Показываю
 
 1. production flow в `src/Managers/RegistrationsManager/Program.cs`;
-2. `RegistrationsManagerFixture.cs`;
-3. `RegistrationsManagerComponentTests.cs`;
-4. `SpyEventPublisher.cs`.
+2. test project `.csproj`;
+3. `RegistrationsManagerFixture.cs`;
+4. `RegistrationsManagerComponentTests.cs`;
+5. `SpyEventPublisher.cs`.
+
+В `.csproj` выделяю `Microsoft.AspNetCore.Mvc.Testing`, `WireMock.Net` и project
+references на Manager и используемые им contracts.
+
+> `WebApplicationFactory` запускает Manager, а `WireMock.Net` даёт два локальных
+> HTTP-сервера для ответов DataAccessor и SchedulingEngine. Отдельный mock
+> framework для publisher не нужен: маленький `SpyEventPublisher` проще увидеть
+> и объяснить прямо в коде.
 
 ### Сначала проговариваю ответственность Manager
 
@@ -537,34 +433,32 @@ dotnet test \
   MeetingFlow.Microservices/tests/MeetingFlow.RegistrationsManager.ComponentTests/MeetingFlow.RegistrationsManager.ComponentTests.csproj
 ```
 
-### Что этот пример учит
-
-- component test может использовать реальные HTTP stubs без реальных
-  downstream-сервисов;
-- оркестрацию удобно проверять управляемыми сценариями зависимостей;
-- важны не только successful calls, но и доказательство отсутствия side effects;
-- внешнее время нужно контролировать;
-- shared fixture state надо сбрасывать между тестами;
-- RabbitMQ здесь не нужен, потому что цель — решение Manager опубликовать
-  правильное событие, а не доставка этого события.
-
 ### Альтернатива
 
 > Можно поднять DataAccessor и SchedulingEngine реально, но тогда тест станет
 > шире, медленнее и будет сложнее точно создать failure cases. Реальную
 > совместимость компонентов мы отдельно проверим targeted integration test, а
-> полную сборку — system test. Именно разделение ответственности тестов не даёт
-> пирамиде превратиться в набор одинаковых E2E-сценариев.
+> полную сборку — system test.
 
 ---
 
-## 6. Пример №4 — targeted integration через RabbitMQ
+## 4. Targeted integration через RabbitMQ
 
 ### Показываю
 
-1. папку `IntegrationTests/RegistrationNotifications`;
-2. `RegistrationNotificationsFixture.cs`;
-3. `RegistrationNotificationsIntegrationTests.cs`.
+1. `.csproj` общего проекта integration tests;
+2. папку `IntegrationTests/RegistrationNotifications`;
+3. `RegistrationNotificationsFixture.cs`;
+4. `RegistrationNotificationsIntegrationTests.cs`.
+
+В `.csproj` выделяю `Testcontainers.RabbitMq`, `Testcontainers.PostgreSql`,
+`RabbitMQ.Client` и project references на production producer, consumer и event
+contracts.
+
+> Два Testcontainers packages управляют инфраструктурой. `RabbitMQ.Client`
+> fixture использует для readiness-проверки очереди. А production references
+> позволяют проверить настоящие `EventPublisher` и consumer, не копируя их код
+> в тестовый проект.
 
 ### Рисую границу
 
@@ -630,21 +524,13 @@ Gateway, RegistrationsManager endpoint, DataAccessor, SchedulingEngine, Web UI
 > примере контейнер одноразовый и тест один. Если suite расширится, понадобится
 > cleanup/Respawn либо уникальные correlation IDs и более строгая изоляция.
 
-### Что именно доказывает тест
+### Показываю assertions
 
-- publisher использует правильные exchange/routing key;
-- событие сериализуется совместимо с consumer;
-- consumer подписан на правильную queue;
-- handler создаёт корректную notification;
-- запись действительно сохраняется;
-- результат доступен через HTTP boundary NotificationsAccessor.
-
-### Чего он не доказывает
-
-- что Gateway вызывает RegistrationsManager;
-- что Manager решит публиковать событие в нужном бизнес-сценарии;
-- что registration сохранилась в DataAccessor;
-- что весь deployment сконфигурирован правильно.
+- `attendeeId` совпадает с опубликованным событием;
+- notification имеет канал `Email`;
+- subject содержит название встречи;
+- body содержит `registrationId`;
+- `SentAt` заполнен после обработки consumer.
 
 ### Запускаю
 
@@ -668,7 +554,7 @@ dotnet test \
 
 ---
 
-## 7. Пример №5 — system test полного registration flow
+## 5. System test полного registration flow
 
 ### Показываю
 
@@ -676,6 +562,10 @@ dotnet test \
 2. `System/SystemIntegrationTests.cs`;
 3. `docker-compose.system-tests.yml`;
 4. test-only mappings в двух Accessor `Program.cs`.
+
+> System test лежит в том же xUnit-проекте, но Testcontainers из этого сценария
+> не вызываются. Здесь fixture создаёт обычные `HttpClient` к уже работающему
+> Compose-стенду.
 
 ### Сначала определяю system boundary
 
@@ -866,48 +756,20 @@ if (app.Configuration.GetValue<bool>("TestSupport:Enabled"))
 > этом может требоваться настоящий hard delete или очистка связанных технических
 > записей.
 
-> Здесь нет единственного обязательного паттерна. Можно регистрировать специальные
-> cleanup endpoints только в тестовом окружении, как в этом примере. А можно
-> добавить delete или admin operation в реальный API, если такая возможность
-> полезна не только автотестам, но и поддержке, администрированию, требованиям к
-> удалению данных или другим реальным сценариям. Само наличие такой операции в
-> production API не является ошибкой — важно определить её семантику, права
-> доступа и аудит.
+> В другом проекте можно выбрать иначе: добавить delete или admin operation в
+> реальный API, если она полезна поддержке или другим продуктовым сценариям.
+> Здесь я показываю именно opt-in test-support вариант. Для него одного feature
+> flag недостаточно: тестовое окружение должно быть изолировано, а эти routes не
+> должны быть доступны production traffic.
 
-> Команда должна договориться, где проходит граница: что является полноценной
-> продуктовой или административной операцией, а что существует только как
-> техническая поддержка тестов. Решение зависит от архитектуры, модели
-> безопасности, lifecycle окружений и стоимости сопровождения.
+### Коротко называю альтернативы cleanup
 
-> Это один из возможных паттернов, а не универсальное требование. В серьёзной
-> системе одного feature flag недостаточно. Test deployment должен иметь
-> отдельную базу, приватную сеть, ограниченный доступ и гарантию, что флаг не
-> включён в production. При необходимости test-support API дополнительно
-> аутентифицируется.
-
-### Альтернативы cleanup
-
-> Вариант первый — одноразовое окружение на test run. В CI это часто лучший
-> выбор: подняли чистый deployment, выполнили тесты и уничтожили всю базу. Тогда
-> cleanup отдельных строк может быть не нужен для защиты следующего pipeline,
-> хотя ownership IDs всё равно полезны для диагностики и параллельности.
-
-> Вариант второй — публичные delete operations, если они действительно нужны
-> продукту. Это лучший вариант, когда операция имеет реальный business meaning.
-
-> Вариант третий — внутренний admin/test-support API, как здесь. Его надо
-> изолировать от production traffic.
-
-> Вариант четвёртый — прямой SQL/EF cleanup. Он бывает практичным для
-> контролируемой тестовой базы, особенно если публичного API нет. Но system test
-> начинает знать внутреннюю schema и требует дополнительного сопровождения при
-> migrations.
-
-> Вариант пятый — cleanup по test run ID или tenant ID отдельным обслуживающим
-> процессом. Это удобно для больших параллельных suites.
-
-> То есть правильный ответ зависит от среды. Обязательны не test-only endpoints,
-> а изоляция, ownership, повторяемость и отсутствие риска удалить чужие данные.
+> Кроме показанного подхода можно использовать публичные delete/admin
+> operations, одноразовое окружение на test run или прямой cleanup тестовой базы.
+> Последний вариант проще технически, но связывает system test со схемой БД.
+> Для больших suites встречается и очистка всех записей по отдельному test-run
+> или tenant ID. В любом варианте тест должен удалять только принадлежащие ему
+> данные.
 
 ### Запускаю system test
 
@@ -919,239 +781,20 @@ dotnet test \
 
 Или запускаю конкретный тест из VS Code Testing после старта Compose.
 
-### Что этот пример учит
-
-- system test входит через публичную backend boundary;
-- UI не обязателен для backend system test;
-- полную топологию можно запускать внешним orchestrator, а не fixture;
-- setup должен создавать уникальные данные через подходящую границу;
-- system test не должен зависеть от seed и пустой базы;
-- асинхронный flow требует readiness и bounded polling;
-- cleanup должен выполняться после падения и учитывать зависимости;
-- test-support API — допустимый, но не единственный вариант;
-- один критический happy path даёт больше пользы, чем дублирование всей матрицы
-  component tests.
-
 ---
 
-## 8. Как эти тесты образуют пирамиду и не дублируют друг друга
+## Завершение практической части
 
-### Показываю итоговую таблицу
+### Показываю
 
-| Уровень | Главный вопрос | Что реально | Что намеренно не проверяем повторно |
-| --- | --- | --- | --- |
-| SchedulingEngine component | Верно ли HTTP-поведение scheduling rules? | Весь Engine | БД, очередь, Managers |
-| DataAccessor component | Верны ли HTTP contract, EF queries и persistence? | Accessor + PostgreSQL | Manager orchestration, RabbitMQ |
-| RegistrationsManager component | Верно ли оркестрируется registration use case? | Manager + HTTP clients | Реальная БД и доставка сообщения |
-| RabbitMQ integration | Совместимы ли publisher, broker и consumer? | Publisher + RabbitMQ + consumer + PostgreSQL | Gateway и бизнес-решение Manager |
-| System | Работает ли критический flow в deployment целиком? | Весь backend | Полная матрица edge cases |
+- зелёные результаты всех пяти примеров в панели Testing;
+- остановившиеся Testcontainers в Docker Desktop;
+- работающий Compose-стенд для system test.
 
 ### Говорю
 
-> Пирамида — это не требование иметь строго определённый процент каждого вида
-> тестов. Это принцип обратной связи: большинство вариантов бизнес-логики
-> проверяются дешёвыми и локализованными тестами, меньше тестов проверяет реальные
-> интеграции, и совсем немного — полную систему.
-
-> Посмотрим на отсутствие дублирования. Full meeting подробно проверяется в
-> Manager component test. В system test мы не создаём десять регистраций, чтобы
-> снова проверить capacity. Rabbit routing подробно проверяется targeted
-> integration test. В system test нам достаточно увидеть итоговую notification.
-> EF graph и закрытые поля DTO проверяются в DataAccessor component test, а не во
-> всех верхних уровнях.
-
-> Верхний тест не заменяет нижний, а нижний не заменяет верхний. Они отвечают на
-> разные вопросы и при падении дают разную диагностическую ценность.
-
----
-
-## 9. Как объяснить стоимость и скорость
-
-### Говорю
-
-> Стоимость теста — не только время выполнения. Это также сложность Arrange,
-> число возможных причин падения, инфраструктура в CI, диагностика и поддержка
-> данных.
-
-```text
-SchedulingEngine component
-  дешёвый startup, минимум причин падения.
-
-RegistrationsManager component
-  немного дороже из-за HTTP stubs, но сценарии полностью управляемы.
-
-DataAccessor component
-  требует Docker и PostgreSQL; зато даёт уверенность в реальной persistence.
-
-Targeted messaging integration
-  требует двух контейнеров и асинхронного ожидания.
-
-System test
-  требует готовности всей топологии и имеет самую широкую область диагностики.
-```
-
-> Поэтому новая проверка должна располагаться на самом низком уровне, который
-> способен уверенно обнаружить интересующий риск. Не «всегда ниже», а именно
-> «самый дешёвый достаточный уровень».
-
----
-
-## 10. Вопросы, которые вероятно зададут участники
-
-### «Почему SchedulingEngine test не unit test?»
-
-> Потому что вход идёт через HTTP boundary полного приложения. Проверяются
-> routing, serialization, validation и endpoint behavior, а не отдельный метод.
-
-### «Почему DataAccessor плюс PostgreSQL всё ещё называется component test?»
-
-> Наша product boundary — DataAccessor. PostgreSQL является необходимой
-> инфраструктурой компонента. Другая команда может назвать это integration test;
-> важнее явно описать границу, чем спорить о ярлыке.
-
-### «Почему не использовать EF InMemory?»
-
-> Он не воспроизводит многие особенности PostgreSQL: SQL translation,
-> constraints, relational behavior и типы. Для repository/accessor confidence
-> настоящий provider ценнее.
-
-### «Почему не поднимать новый PostgreSQL для каждого теста?»
-
-> Это максимально изолированно, но дороже. Сейчас один контейнер на класс плюс
-> Respawn обеспечивает достаточную изоляцию быстрее. Если появятся утечки
-> состояния, решение можно пересмотреть.
-
-### «Почему stubs Manager-теста не делают тест интеграционным?»
-
-> Реальная HTTP serialization до WireMock проверяется, но product integration с
-> настоящим DataAccessor не проверяется. Основная boundary остаётся одним
-> Manager. Поэтому в нашей классификации это component test.
-
-### «Зачем spy, если можно поднять RabbitMQ?»
-
-> В Manager suite нам нужно проверить намерение опубликовать корректное событие.
-> Реальная доставка отдельно проверяется targeted integration test. RabbitMQ в
-> каждом Manager-сценарии увеличил бы стоимость без новой уверенности.
-
-### «Почему system test не использует Testcontainers?»
-
-> Testcontainers отлично подходит для одной или нескольких изолированных
-> зависимостей. Здесь мы сознательно проверяем уже развёрнутую полную систему в
-> Docker Compose. Технически всю топологию можно собирать Testcontainers, но это
-> другой lifecycle и более сложная fixture.
-
-### «Может ли system test работать с Testcontainers?»
-
-> Да. Нет запрета поднимать всю систему программно. Решение зависит от числа
-> сервисов, CI, портов, логов, параллельности и удобства локальной отладки. В
-> нашем учебном примере внешний Compose делает границу deployment нагляднее.
-
-### «Почему после теста нужен cleanup, если CI-среда одноразовая?»
-
-> В локальной общей среде cleanup нужен для повторных запусков. В одноразовом CI
-> он может быть не нужен для следующего запуска, но остаётся полезным, если тесты
-> идут параллельно или среда сохраняется для диагностики. Стратегия зависит от
-> lifecycle окружения.
-
-### «Можно ли включить test-only endpoints в облаке?»
-
-> Да, в отдельном test deployment через configuration. Но test runner должен
-> иметь приватный сетевой доступ, база должна быть тестовой, а production
-> deployment не должен регистрировать эти routes. Feature flag — только один
-> слой защиты, а не полноценная security model.
-
-### «Почему не сделать все delete endpoints публичными?»
-
-> Публичный API должен выражать продуктовые возможности. Если удаление сущности
-> имеет business meaning — публичный endpoint нормален. Если операция нужна
-> исключительно для уборки теста, лучше не расширять внешний контракт без
-> необходимости.
-
-### «Нужно ли всегда удалять test data?»
-
-> Нет единственного правила. Одноразовую базу можно уничтожить целиком. Общую
-> долгоживущую среду нужно очищать безопасно. Но в любом случае тест должен явно
-> владеть своими данными и не зависеть от порядка запуска.
-
----
-
-## 11. Рекомендуемый порядок живой демонстрации
-
-### Перед лекцией
-
-- открыть solution из корня, где расположен `MeetingFlow.slnx`;
-- убедиться, что тесты видны в VS Code Testing;
-- запустить Docker Desktop;
-- проверить, что порты MeetingFlow не заняты другим проектом;
-- заранее восстановить NuGet packages;
-- для system test запустить Compose с override;
-- открыть Docker Desktop и pgAdmin как дополнительные визуальные инструменты;
-- иметь готовые terminals для отдельных `dotnet test --filter` команд.
-
-### Во время показа
-
-1. Показать architecture flow и сформулировать границы.
-2. Запустить один `Theory` SchedulingEngine из IDE.
-3. Показать DataAccessor fixture, PostgreSQL и Ryuk в Docker Desktop.
-4. Запустить DataAccessor test и показать, что контейнер удаляется после suite.
-5. Показать WireMock setup и spy в Manager test.
-6. Поставить breakpoint в Manager или test и запустить отдельный сценарий.
-7. Показать два контейнера targeted integration test и readiness polling.
-8. Перейти к уже запущенному Compose и выполнить system test через Gateway.
-9. После system test показать, что test-owned rows удалены, а seed/local data
-   остались.
-10. Завершить таблицей пирамиды и объяснить, где мы сознательно не дублируем
-    проверки.
-
-### Команды по уровням
-
-```bash
-# SchedulingEngine component tests
-dotnet test \
-  MeetingFlow.Microservices/tests/MeetingFlow.SchedulingEngine.ComponentTests/MeetingFlow.SchedulingEngine.ComponentTests.csproj
-
-# DataAccessor component tests
-dotnet test \
-  MeetingFlow.Microservices/tests/MeetingFlow.DataAccessor.ComponentTests/MeetingFlow.DataAccessor.ComponentTests.csproj
-
-# RegistrationsManager component tests
-dotnet test \
-  MeetingFlow.Microservices/tests/MeetingFlow.RegistrationsManager.ComponentTests/MeetingFlow.RegistrationsManager.ComponentTests.csproj
-
-# Targeted RabbitMQ integration test
-dotnet test \
-  MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj \
-  --filter Category=Integration
-
-# System test
-dotnet test \
-  MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj \
-  --filter Category=System
-```
-
----
-
-## 12. Финальный закадровый вывод
-
-### Говорю
-
-> На этих примерах видно, что хороший набор тестов начинается не с выбора
-> библиотеки, а с выбора риска и границы.
-
-> SchedulingEngine показывает быстрый component test полного HTTP-сервиса без
-> инфраструктуры. DataAccessor показывает реальную базу, Testcontainers,
-> Respawn и ownership данных. RegistrationsManager показывает управляемую
-> оркестрацию через HTTP stubs, spy и фиксированное время. RabbitMQ integration
-> test доказывает совместимость реальных producer и consumer. System test
-> подтверждает один критический flow через Gateway на полностью запущенной
-> системе.
-
-> Главное — не пытаться получить всю уверенность одним дорогим E2E-тестом. Мы
-> распределяем проверки так, чтобы нижние уровни быстро и точно покрывали
-> варианты поведения, интеграционные тесты проверяли рискованные стыки, а
-> системные тесты оставались немногочисленным подтверждением того, что deployment
-> действительно работает как единое целое.
-
-> И ещё один общий принцип для всех уровней: тест должен владеть своими данными,
-> не зависеть от seed или порядка запуска, ждать наблюдаемые условия вместо
-> фиксированных пауз и оставлять после себя предсказуемое состояние.
+> Мы прошли все примеры на уровне кода: запуск приложения через
+> `WebApplicationFactory`, PostgreSQL и RabbitMQ через Testcontainers, очистку
+> базы через Respawn, HTTP stubs через WireMock, spy для событий, фиксированное
+> время и подключение system test к Docker Compose. Теперь можно вернуться к
+> вопросам по конкретной реализации или запустить отдельный тест в debug-режиме.
