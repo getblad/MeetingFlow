@@ -116,9 +116,12 @@ NotificationsAccessor at `http://localhost:5011`, verifies their health
 endpoints, waits for the local RabbitMQ consumer and creates `HttpClient`
 instances. It does not start or stop Docker.
 
-Start the backend from `MeetingFlow.Microservices` with the system-test override:
+Before running the system test, start the backend with the system-test override.
+
+In the first terminal, open the `MeetingFlow.Microservices` directory and run:
 
 ```bash
+cd MeetingFlow.Microservices
 docker compose -f docker-compose.yml -f docker-compose.system-tests.yml up --build
 ```
 
@@ -127,7 +130,8 @@ sets `TestSupport__Enabled=true` for DataAccessor and NotificationsAccessor.
 Without that explicit setting, the `/_test/...` cleanup routes are not mapped at
 all. They are also never forwarded by Gateway.
 
-Run only this slow system test:
+Wait until the services are ready and keep that terminal running. In a second
+terminal, from the repository root, run the system test:
 
 ```bash
 dotnet test MeetingFlow.Microservices/tests/MeetingFlow.Microservices.IntegrationTests/MeetingFlow.Microservices.IntegrationTests.csproj --filter Category=System
