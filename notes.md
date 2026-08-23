@@ -19,24 +19,8 @@
 Говорю:
 
 > SchedulingEngine отвечает за две операции: проверку пересечения сессий и
-> проверку свободных мест. У него нет базы данных, очереди и downstream-сервисов.
-> Поэтому граница этого component test — весь HTTP-сервис, а подменять внешние
-> зависимости здесь не нужно.
+> проверку свободных мест. Здесь у нас миниман апи. Какая граница этого микросервиса? The whole SchedulingEngine http service. And the system under test is http service itself. У него нет базы данных, очереди и downstream-сервисов поэтому подменять внешние зависимости здесь не нужно.
 
-Показываю:
-
-- `/scheduling/check-conflict`;
-- `/scheduling/check-capacity`;
-- `public partial class Program` в конце файла.
-
-Коротко объясняю:
-
-> `public partial class Program` делает entry point доступным тестовому проекту.
-> Production-поведение от этого не меняется.
-
-### Fixture
-
-Открываю `.csproj` тестового проекта и показываю:
 
 ```xml
 <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" ... />
@@ -64,6 +48,7 @@ IClassFixture<WebApplicationFactory<Program>>
 
 Показываю `Theory` для проверки конфликтов:
 
+>Couple words about Theory. It is kind of tests. It runs the same test logic with different input data and expected results. It helps avoid several >almost identical Fact tests.
 > Здесь Arrange, Act и Assert одинаковые. Меняются только интервалы, комнаты и
 > ожидаемый результат. Поэтому несколько случаев удобно представить как
 > `Theory`, а не копировать одинаковые `Fact`.
@@ -76,8 +61,8 @@ IClassFixture<WebApplicationFactory<Program>>
 
 Говорю:
 
-> Тест входит через HTTP, поэтому проверяется не только алгоритм, но и routing,
-> model binding, validation и JSON contract.
+> Эти компонентные Тесты входят через HTTP, поэтому проверяется не только алгоритм, но и routing,
+> model binding, validation и JSON contract. Поэтому это и является компоентным тестом, а не просто юнит.
 
 ### Запуск
 
@@ -97,7 +82,9 @@ dotnet test \
 Говорю:
 
 > DataAccessor отвечает за HTTP API доступа к данным, EF Core queries, mapping
-> и сохранение в PostgreSQL. Если заменить PostgreSQL in-memory коллекцией, мы
+> и сохранение в PostgreSQL. У него есть разные http endpoints to get insert, update and delete data in db.
+
+>Если заменить PostgreSQL in-memory коллекцией, мы
 > не проверим важную ответственность компонента. Поэтому DataAccessor запускаем
 > через `WebApplicationFactory`, а PostgreSQL оставляем настоящим.
 
@@ -185,7 +172,7 @@ dotnet test \
 > Компонентными тестами мы проверили DataAccessor целиком через его HTTP-границу:
 > настоящий startup, routing, DTO mapping, EF Core queries и сохранение в
 > настоящем PostgreSQL. Другие микросервисы при этом не запускались — системой
-> под тестом оставался только DataAccessor вместе с необходимой ему базой данных.
+> под тестом оставался только DataAccessor вместе с базой данных как частью его инфраструктуры.
 
 ---
 
@@ -361,11 +348,12 @@ test → Gateway → RegistrationsManager → DataAccessor → PostgreSQL
 
 Говорю:
 
-> Это один критический backend flow через публичную границу Gateway. Браузер для
-> такого system test не обязателен. В отличие от предыдущих примеров, тест не
-> запускает приложение через `WebApplicationFactory` и не создаёт Testcontainers.
-> Он подключается к реальной системе, заранее поднятой через Docker Compose.
-
+> В этом системном тесты мы тестируем полный критический юзер бекенд юзер флоу через
+> публичную границу Gateway. Сранительно с предыдущими примерами здесь мы тестируем полностью реальную
+>систему. Поэтому мы не используем здесь ни вебапликейншфектори и тестконтейнеры, перед запуском мы запустим
+>докер компоуз в ручную. Для создания тестовых данных публичный АПИ уже имел все нужные эндпройнты. А также >некоторые для удаления. Но не все. Нам не хватало удаления Atendee. Можно расширить публичный АПИ этим методом. Также можно быть добавить флаг тестовой среды в докер компоуз файле и при запуске тестов подклюать доп эндпойнты. Я так сделал для дата аксессора.
+>
+>
 ### Fixture
 
 Открываю `SystemIntegrationFixture.cs`.
