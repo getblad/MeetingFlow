@@ -52,6 +52,28 @@ If it fails, nothing below will work — check both servers before continuing.
 > The SQLite database is created and seeded on first run. To reset it: stop the API,
 > delete `MeetingFlow.Api/meetingflow_api.db`, start it again.
 
+### Where the e2e project came from
+
+You did not have to create it. Below is how a Playwright project is initialised, and
+the settings we did not leave at their defaults.
+
+```bash
+npm init playwright@latest
+```
+
+It writes `package.json`, `playwright.config.ts`, a `tests/` folder with an example
+spec, and a `.gitignore`. Ours is a trimmed version of that output.
+
+| Setting                              | Why                                                                                        |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `baseURL: "http://localhost:5173"`   | Tests can say `page.goto("/")`.                                                             |
+| `trace: "retain-on-failure"`         | Keeps the timeline, DOM snapshots and network log of a failed test — Parts 3 and 4 need it. |
+| `workers: 1`, `fullyParallel: false` | One shared SQLite database, so tests are not isolated. A workaround, not a good end state.  |
+| `projects: [chromium]`               | One browser; cross-browser runs are a CI concern.                                           |
+
+`tests/smoke.spec.ts` replaces the generated example. `tsconfig.json` is there for
+editor type-checking — Playwright does not need it to run tests.
+
 ---
 
 ## Part 1 — Read the code (~10 minutes)
