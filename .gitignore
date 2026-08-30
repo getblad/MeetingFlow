@@ -8,6 +8,7 @@ obj/
 *.suo
 .vs/
 MeetingFlow.Monolith/appsettings.Development.json
+MeetingFlow.Monolith/appsettings.Local.json
 
 ## Node
 node_modules/

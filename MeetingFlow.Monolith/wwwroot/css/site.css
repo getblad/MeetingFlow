@@ -79,7 +79,7 @@ a:hover { text-decoration: underline; }
 .kosher-page { max-width: 920px; margin: 0 auto; }
 .kosher-hero { margin-bottom: 1.5rem; }
 .kosher-hero h1 { margin-bottom: 0.35rem; }
-.kosher-hero > p:last-child { color: #555; max-width: 680px; }
+.kosher-hero > p:not(.eyebrow) { color: #555; max-width: 760px; }
 .eyebrow {
     color: #4361ee; font-size: 0.78rem; font-weight: 700;
     letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.25rem;
