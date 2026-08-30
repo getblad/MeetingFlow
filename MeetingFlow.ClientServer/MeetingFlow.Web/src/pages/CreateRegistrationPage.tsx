@@ -71,8 +71,8 @@ export default function CreateRegistrationPage() {
 
       <form onSubmit={handleSubmit} style={{ maxWidth: 500 }}>
         <div className="field">
-          <label>Meeting</label>
-          <select value={meetingId} onChange={(e) => setMeetingId(e.target.value)} required>
+          <label htmlFor="meeting">Meeting</label>
+          <select id="meeting" value={meetingId} onChange={(e) => setMeetingId(e.target.value)} required>
             <option value="">-- Select Meeting --</option>
             {meetings
               .filter((ev) => ev.status === "Published")
@@ -85,13 +85,13 @@ export default function CreateRegistrationPage() {
         </div>
 
         <div className="field">
-          <label>Your Name</label>
-          <input type="text" value={attendeeName} onChange={(e) => setAttendeeName(e.target.value)} required />
+          <label htmlFor="attendeeName">Your Name</label>
+          <input id="attendeeName" type="text" value={attendeeName} onChange={(e) => setAttendeeName(e.target.value)} required />
         </div>
 
         <div className="field">
-          <label>Your Email</label>
-          <input type="email" value={attendeeEmail} onChange={(e) => setAttendeeEmail(e.target.value)} required />
+          <label htmlFor="attendeeEmail">Your Email</label>
+          <input id="attendeeEmail" type="email" value={attendeeEmail} onChange={(e) => setAttendeeEmail(e.target.value)} required />
         </div>
 
         <div className="field">

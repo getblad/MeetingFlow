@@ -45,20 +45,23 @@ the test must read the "before" count at runtime and never assume a fixed number
   `getByText` is the right tool.
 - Registrations count on the meeting detail page — fully role-based:
   `getByRole('row').filter({ has: getByRole('rowheader', { name: 'Registrations' }) }).getByRole('cell')`.
-- **`getByLabel` does not work on any form field on this page.** The Meeting select, Your Name,
-  Your Email and Ticket Type each sit beside a `<label>` carrying the correct visible text, but that
-  label has no `for`/`id`, does not wrap the control, and the control has no
-  `aria-label`/`aria-labelledby` (confirmed by DOM inspection and visible in
-  `CreateRegistrationPage.tsx`). This is a real product accessibility defect worth its own bug
-  report. Until it is fixed, CSS locators are unavoidable here and are justified per locator:
-  - Meeting select → `page.locator('select[required]')` — the only `<select>` on the page with the
-    `required` attribute, so it is identified by a semantic HTML attribute rather than by position.
-  - Your Name → `page.locator('input[type="text"]')` — the only text input on the page;
-    distinguishes it from the email input by attribute, not DOM order.
-  - Your Email → `page.locator('input[type="email"]')` — same justification, via `type="email"`.
+- Form fields — **`getByLabel` now works.** The three controls this scenario touches were previously
+  unreachable by label: each sat beside a `<label>` with the right visible text, but the label had no
+  `for`/`id`, did not wrap the control, and the control had no `aria-label`/`aria-labelledby`. That
+  was fixed at source in `CreateRegistrationPage.tsx` by adding `htmlFor`/`id` pairs, so **no CSS
+  locator is needed anywhere in this plan**:
+  - Meeting select → `page.getByLabel('Meeting')`
+  - Your Name → `page.getByLabel('Your Name')`
+  - Your Email → `page.getByLabel('Your Email')`
 
-  The kept scenario leaves Ticket Type at its default, so no locator for it is needed. That
-  deliberately avoids the one control with no distinguishing attribute at all.
+  Verified against the running app on 2026-08-30: the accessibility tree reports
+  `combobox "Meeting"`, `textbox "Your Name"` and `textbox "Your Email"`.
+
+- **Outstanding:** the Ticket Type select is still unassociated and still exposes no accessible name
+  (`combobox` with no name in the a11y tree), so `getByLabel('Ticket Type')` matches nothing. This
+  scenario leaves Ticket Type at its default and never locates it, so it is not blocked — but the
+  same `htmlFor="ticketType"` / `id="ticketType"` fix should be applied before any test needs that
+  control.
 
 ## Test Scenarios
 
