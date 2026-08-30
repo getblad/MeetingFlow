@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Домашнее задание: eval-проверка сценария кошерности</title>
+  <title>Домашнее задание: оценка качества AI-сценария проверки кошерности</title>
   <style>
     :root {
       color-scheme: light;
@@ -216,6 +216,28 @@
       overflow-wrap: anywhere;
     }
 
+    .system-preview {
+      margin: 22px 0 0;
+    }
+
+    .system-preview img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .system-preview figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .resource-list {
+      margin-bottom: 0;
+    }
+
     .submit-section {
       margin-top: 34px;
       border-bottom: 0;
@@ -288,7 +310,7 @@
     <header>
       <div class="header-copy">
         <p class="eyebrow">ZIONET · Домашнее задание</p>
-        <h1>Eval-проверка сценария кошерности</h1>
+        <h1>Оценка качества AI-сценария проверки кошерности</h1>
       </div>
       <div class="brand-logo">
         <img src="assets/zionet-slide-frame.png" alt="ZIONET">
@@ -308,11 +330,26 @@
     -->
 
     <section>
-      <h2>Суть задачи</h2>
+      <h2>Какую систему мы тестируем</h2>
       <p>
-        Создать набор eval-тестов, которые оценивают работу языковой модели
-        в сценарии определения кошерности.
+        В монолитном приложении <code>MeetingFlow.Monolith</code> есть страница
+        <code>/KosherCheck</code>. Пользователь описывает от одного до десяти блюд,
+        а языковая модель предварительно оценивает каждое описание.
       </p>
+      <p>
+        Для каждого блюда система возвращает один из статусов <code>KOSHER</code>,
+        <code>NOT_KOSHER</code>, <code>CONDITIONAL</code> или <code>INVALID_INPUT</code>
+        и кратко объясняет результат.
+      </p>
+
+      <figure class="system-preview">
+        <img
+          src="assets/kosher-check-example.png"
+          alt="Страница KosherCheck с блюдами beef burger и pizza и предварительными оценками модели">
+        <figcaption>
+          Пример работы системы: два описания блюд и предварительная оценка модели для каждого из них.
+        </figcaption>
+      </figure>
 
       <details class="run-guide">
         <summary>Как запустить сценарий кошерности</summary>
@@ -384,16 +421,56 @@ dotnet restore .\MeetingFlow.Monolith\MeetingFlow.Monolith.csproj</code></pre>
         </ul>
       </details>
 
-      <p class="implementation-link">
-        Код серверной реализации сценария кошерности находится
-        <a href="https://github.com/getblad/MeetingFlow/blob/main/MeetingFlow.Monolith/Services/OpenAiKosherAssessmentService.cs">
-          в сервисе <code>OpenAiKosherAssessmentService</code>
-        </a>.
+      <div class="implementation-link">
+        <p><strong>Куда смотреть в коде:</strong></p>
+        <ul class="resource-list">
+          <li>
+            <a href="https://github.com/getblad/MeetingFlow/blob/main/MeetingFlow.Monolith/Pages/KosherCheck.cshtml">
+              <code>Pages/KosherCheck.cshtml</code>
+            </a>
+            — интерфейс страницы.
+          </li>
+          <li>
+            <a href="https://github.com/getblad/MeetingFlow/blob/main/MeetingFlow.Monolith/Pages/KosherCheck.cshtml.cs">
+              <code>Pages/KosherCheck.cshtml.cs</code>
+            </a>
+            — обработка входных данных и формирование результата.
+          </li>
+          <li>
+            <a href="https://github.com/getblad/MeetingFlow/blob/main/MeetingFlow.Monolith/Services/OpenAiKosherAssessmentService.cs">
+              <code>Services/OpenAiKosherAssessmentService.cs</code>
+            </a>
+            — инструкции и вызов языковой модели.
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Ваша задача</h2>
+      <p>
+        Напишите набор автоматических проверок, который помогает понять, корректно ли эта система
+        работает на разных описаниях блюд и пограничных ситуациях.
+      </p>
+      <p>
+        Сложность в том, что система использует языковую модель и поэтому недетерминирована:
+        формулировка, объяснение и иногда сама оценка могут отличаться между запусками.
+        Проверки должны оценивать важные свойства ответа, а не ждать полного совпадения текста.
+      </p>
+      <p>
+        Такие проверки обычно называют <strong>evals</strong>, или eval-тестами. Коротко познакомиться
+        с подходом можно в материалах
+        <a href="https://developers.openai.com/api/docs/guides/evaluation-best-practices">OpenAI об evaluation best practices</a>
+        и
+        <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic о структуре evals и разных типах проверок</a>.
       </p>
     </section>
 
     <section>
       <h2>Что обязательно должна включать работа</h2>
+      <p>
+        Если вы раньше не писали eval-тесты, используйте следующую структуру как рекомендуемый каркас решения.
+      </p>
       <ol>
         <li>
           <strong>Набор входных случаев.</strong>

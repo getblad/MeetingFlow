@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Homework: Evaluation of the Kosher Check Flow</title>
+  <title>Homework: Evaluating the AI Kosher Check Flow</title>
   <style>
     :root {
       color-scheme: light;
@@ -216,6 +216,28 @@
       overflow-wrap: anywhere;
     }
 
+    .system-preview {
+      margin: 22px 0 0;
+    }
+
+    .system-preview img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+
+    .system-preview figcaption {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .resource-list {
+      margin-bottom: 0;
+    }
+
     .submit-section {
       margin-top: 34px;
       border-bottom: 0;
@@ -288,7 +310,7 @@
     <header>
       <div class="header-copy">
         <p class="eyebrow">ZIONET · Homework</p>
-        <h1>Evaluation of the Kosher Check Flow</h1>
+        <h1>Evaluating the AI Kosher Check Flow</h1>
       </div>
       <div class="brand-logo">
         <img src="assets/zionet-slide-frame.png" alt="ZIONET">
@@ -308,11 +330,25 @@
     -->
 
     <section>
-      <h2>Assignment</h2>
+      <h2>What system are we testing?</h2>
       <p>
-        Create an evaluation test suite that assesses how well a language model performs
-        in the kosher check flow.
+        The <code>MeetingFlow.Monolith</code> application in this repository contains a
+        <code>/KosherCheck</code> page. A user describes between one and ten dishes,
+        and a language model gives each description a preliminary assessment.
       </p>
+      <p>
+        For every dish, the system returns one of <code>KOSHER</code>, <code>NOT_KOSHER</code>,
+        <code>CONDITIONAL</code>, or <code>INVALID_INPUT</code>, together with a short explanation.
+      </p>
+
+      <figure class="system-preview">
+        <img
+          src="assets/kosher-check-example.png"
+          alt="KosherCheck page with beef burger and pizza and the model's preliminary assessments">
+        <figcaption>
+          Example system run: two dish descriptions and the model's preliminary assessment for each one.
+        </figcaption>
+      </figure>
 
       <details class="run-guide">
         <summary>How to run the kosher check flow</summary>
@@ -384,16 +420,56 @@ dotnet restore .\MeetingFlow.Monolith\MeetingFlow.Monolith.csproj</code></pre>
         </ul>
       </details>
 
-      <p class="implementation-link">
-        The server-side implementation of the kosher check flow is located
-        <a href="https://github.com/getblad/MeetingFlow/blob/main/MeetingFlow.Monolith/Services/OpenAiKosherAssessmentService.cs">
-          in the <code>OpenAiKosherAssessmentService</code> service
-        </a>.
+      <div class="implementation-link">
+        <p><strong>Where to look in the code:</strong></p>
+        <ul class="resource-list">
+          <li>
+            <a href="https://github.com/getblad/MeetingFlow/blob/main/MeetingFlow.Monolith/Pages/KosherCheck.cshtml">
+              <code>Pages/KosherCheck.cshtml</code>
+            </a>
+            — the page interface.
+          </li>
+          <li>
+            <a href="https://github.com/getblad/MeetingFlow/blob/main/MeetingFlow.Monolith/Pages/KosherCheck.cshtml.cs">
+              <code>Pages/KosherCheck.cshtml.cs</code>
+            </a>
+            — input handling and result shaping.
+          </li>
+          <li>
+            <a href="https://github.com/getblad/MeetingFlow/blob/main/MeetingFlow.Monolith/Services/OpenAiKosherAssessmentService.cs">
+              <code>Services/OpenAiKosherAssessmentService.cs</code>
+            </a>
+            — the language-model instructions and call.
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Your task</h2>
+      <p>
+        Build a set of automated checks that helps determine whether this system behaves correctly
+        across different dish descriptions and edge cases.
+      </p>
+      <p>
+        The challenge is that the system uses a language model and is therefore nondeterministic:
+        wording, explanations, and sometimes the assessment itself can vary between runs.
+        Your checks should evaluate important properties of the response instead of requiring an exact text match.
+      </p>
+      <p>
+        These checks are commonly called <strong>evals</strong>, or evaluation tests. For a short introduction,
+        see
+        <a href="https://developers.openai.com/api/docs/guides/evaluation-best-practices">OpenAI's evaluation best practices</a>
+        and
+        <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic's guide to eval structure and grader types</a>.
       </p>
     </section>
 
     <section>
       <h2>Required elements</h2>
+      <p>
+        If you have not written evals before, use the following structure as the recommended shape of your solution.
+      </p>
       <ol>
         <li>
           <strong>Input case set.</strong>
