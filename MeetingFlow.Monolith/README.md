@@ -116,15 +116,19 @@ dotnet run
 
 The SQLite database (`meetingflow_monolith.db`) is created and seeded automatically on startup.
 
-The monolith starts without AI configuration, but the Kosher Checker will show an unavailable message until these environment variables are provided:
+The monolith starts without AI configuration, but the Kosher Checker will show an unavailable message until you create `MeetingFlow.Monolith/appsettings.Local.json`:
 
-```bash
-AiChat__Model=gpt-5-mini
-AiChat__Endpoint=https://api.openai.com/v1
-AiChat__ApiKey=your-api-key
+```json
+{
+  "AiChat": {
+    "Model": "gpt-5-mini",
+    "Endpoint": "https://api.openai.com/v1",
+    "ApiKey": "your-api-key"
+  }
+}
 ```
 
-The configured model and endpoint must support native JSON-schema structured output. The default uses OpenAI `gpt-5-mini`. Secrets must be supplied through environment variables or local secret storage and must not be committed.
+The configured model and endpoint must support native JSON-schema structured output. The default uses OpenAI `gpt-5-mini`. `appsettings.Local.json` is ignored by Git and must not be committed.
 
 Run the server tests:
 

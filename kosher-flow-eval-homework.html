@@ -327,23 +327,31 @@ dotnet restore .\MeetingFlow.Monolith\MeetingFlow.Monolith.csproj</code></pre>
 
         <h3>2. Configure the model</h3>
         <p>
-          Select one set of variables for each run. Do not save the API key in project files
-          or commit it to Git.
+          Create <code>MeetingFlow.Monolith/appsettings.Local.json</code>. The file overrides
+          the AI settings from <code>appsettings.json</code>, is ignored by Git, and must not be committed.
         </p>
 
         <p><strong>OpenAI</strong></p>
-        <pre><code>$env:AiChat__Model = 'gpt-5-mini'
-$env:AiChat__Endpoint = 'https://api.openai.com/v1'
-$env:AiChat__ApiKey = '&lt;OPENAI_API_KEY&gt;'</code></pre>
+        <pre><code>{
+  "AiChat": {
+    "Model": "gpt-5-mini",
+    "Endpoint": "https://api.openai.com/v1",
+    "ApiKey": "&lt;OPENAI_API_KEY&gt;"
+  }
+}</code></pre>
         <p>
           Create a key on the
           <a href="https://platform.openai.com/api-keys">OpenAI API keys page</a>.
         </p>
 
         <p><strong>Groq</strong> <span class="free-label">(free tier)</span></p>
-        <pre><code>$env:AiChat__Model = 'openai/gpt-oss-20b'
-$env:AiChat__Endpoint = 'https://api.groq.com/openai/v1'
-$env:AiChat__ApiKey = '&lt;GROQ_API_KEY&gt;'</code></pre>
+        <pre><code>{
+  "AiChat": {
+    "Model": "openai/gpt-oss-20b",
+    "Endpoint": "https://api.groq.com/openai/v1",
+    "ApiKey": "&lt;GROQ_API_KEY&gt;"
+  }
+}</code></pre>
         <p>
           Create a key on the <a href="https://console.groq.com/keys">Groq API keys page</a>.
           The free tier has
@@ -371,7 +379,7 @@ $env:AiChat__ApiKey = '&lt;GROQ_API_KEY&gt;'</code></pre>
         <ul>
           <li><code>401</code> - check the API key and the selected provider.</li>
           <li><code>429</code> - the request limit was reached; wait and try again.</li>
-          <li><code>503</code> - the <code>AiChat__ApiKey</code> variable is not set.</li>
+          <li><code>503</code> - <code>AiChat:ApiKey</code> is missing in <code>appsettings.Local.json</code>.</li>
           <li>Schema error - select a model that supports JSON Schema.</li>
         </ul>
       </details>
@@ -409,8 +417,8 @@ $env:AiChat__ApiKey = '&lt;GROQ_API_KEY&gt;'</code></pre>
         </li>
         <li>
           <strong>Short run guide.</strong>
-          List the actual environment variable names for the API key, the evaluated model, and the
-          judge model. Include one complete run command and state where the report will be created.
+          List the settings in <code>appsettings.Local.json</code> for the API key, the evaluated model,
+          and the judge model. Include one complete run command and state where the report will be created.
         </li>
       </ol>
     </section>

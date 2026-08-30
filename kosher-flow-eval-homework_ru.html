@@ -327,23 +327,31 @@ dotnet restore .\MeetingFlow.Monolith\MeetingFlow.Monolith.csproj</code></pre>
 
         <h3>2. Настройте модель</h3>
         <p>
-          Для одного запуска выберите один набор переменных. Ключ доступа не сохраняйте
-          в файлах проекта и не добавляйте в Git.
+          Создайте файл <code>MeetingFlow.Monolith/appsettings.Local.json</code>. Он перекрывает
+          настройки AI из <code>appsettings.json</code>, исключен из Git и не должен попадать в репозиторий.
         </p>
 
         <p><strong>OpenAI</strong></p>
-        <pre><code>$env:AiChat__Model = 'gpt-5-mini'
-$env:AiChat__Endpoint = 'https://api.openai.com/v1'
-$env:AiChat__ApiKey = '&lt;OPENAI_API_KEY&gt;'</code></pre>
+        <pre><code>{
+  "AiChat": {
+    "Model": "gpt-5-mini",
+    "Endpoint": "https://api.openai.com/v1",
+    "ApiKey": "&lt;OPENAI_API_KEY&gt;"
+  }
+}</code></pre>
         <p>
           Ключ можно создать на
           <a href="https://platform.openai.com/api-keys">странице ключей OpenAI</a>.
         </p>
 
         <p><strong>Groq</strong> <span class="free-label">(бесплатная версия)</span></p>
-        <pre><code>$env:AiChat__Model = 'openai/gpt-oss-20b'
-$env:AiChat__Endpoint = 'https://api.groq.com/openai/v1'
-$env:AiChat__ApiKey = '&lt;GROQ_API_KEY&gt;'</code></pre>
+        <pre><code>{
+  "AiChat": {
+    "Model": "openai/gpt-oss-20b",
+    "Endpoint": "https://api.groq.com/openai/v1",
+    "ApiKey": "&lt;GROQ_API_KEY&gt;"
+  }
+}</code></pre>
         <p>
           Ключ можно создать на <a href="https://console.groq.com/keys">странице ключей Groq</a>.
           Для бесплатной версии действуют
@@ -371,7 +379,7 @@ $env:AiChat__ApiKey = '&lt;GROQ_API_KEY&gt;'</code></pre>
         <ul>
           <li><code>401</code> - проверьте ключ и выбранного поставщика.</li>
           <li><code>429</code> - достигнут предел запросов; подождите и повторите попытку.</li>
-          <li><code>503</code> - переменная <code>AiChat__ApiKey</code> не задана.</li>
+          <li><code>503</code> - в <code>appsettings.Local.json</code> не задано значение <code>AiChat:ApiKey</code>.</li>
           <li>Ошибка схемы - выберите модель с поддержкой JSON Schema.</li>
         </ul>
       </details>
@@ -409,8 +417,8 @@ $env:AiChat__ApiKey = '&lt;GROQ_API_KEY&gt;'</code></pre>
         </li>
         <li>
           <strong>Краткая инструкция по запуску.</strong>
-          Перечислите реальные имена переменных окружения для ключа доступа, проверяемой модели
-          и модели-судьи. Покажите одну готовую команду запуска и укажите, где появится отчет.
+          Перечислите настройки в <code>appsettings.Local.json</code> для ключа доступа, проверяемой
+          модели и модели-судьи. Покажите одну готовую команду запуска и укажите, где появится отчет.
         </li>
       </ol>
     </section>
