@@ -2,11 +2,17 @@
 
 ## Scope
 
-Covers the public attendee registration flow at `/register`: pick a meeting, submit the registration form, see the confirmation. Admin pages and admin-only routes are explicitly out of scope and are not exercised by any scenario below. Field-level validation (required-field markers, email/phone format, string/date formatting, character limits) is assumed to be covered by unit/component tests and is intentionally excluded here.
+The public attendee registration flow at `/register`: pick a meeting, submit the form, see the
+confirmation. Admin pages and admin-only routes are out of scope.
+
+This plan was cut from 6 candidate scenarios to **1 E2E scenario** by asking, for each one, *what
+would have to break for this test to fail?* Only failures that require a path the user walks
+across screens and processes stayed here. Everything else was pushed down a layer and is recorded
+under [Moved to another layer](#moved-to-another-layer) — a rejection is not a deletion of risk.
 
 ## Seed file and fixtures
 
-All tests follow the import/setup pattern in `tests/seed.spec.ts`:
+Follows the import/setup pattern in `tests/seed.spec.ts`:
 
 ```ts
 import { test, expect } from '../fixtures';
@@ -17,33 +23,42 @@ test('seed', async ({ page }) => {
 });
 ```
 
-Every scenario that **creates** a registration must use the `attendee` fixture from `fixtures.ts` (`{ name, email }`, unique per test via `Date.now()` + `testInfo.workerIndex`) instead of hardcoded name/email values, so repeated test runs never collide on duplicate data.
+The scenario creates a registration, so it must use the `attendee` fixture from `fixtures.ts`
+(`{ name, email }`, unique per test via `Date.now()` + `testInfo.workerIndex`) rather than
+hardcoded values. The shared SQLite database is never reset between runs, so every run adds a row —
+the test must read the "before" count at runtime and never assume a fixed number.
 
-## Preconditions / test data assumptions (observed on 2026-08-30 against the running app)
+## Preconditions / test data assumptions (observed 2026-08-30 against the running app)
 
-- Web app at http://localhost:5173, API at http://localhost:5062, both confirmed running.
-- The home page (`/`) listed 5 seeded meetings: "Product Engineering Meetup" (Published), "Frontend Architecture Summit" (Published), "Cloud Integration Day" (Published), "Distributed Systems Workshop" (Draft), "AI Tools for Developers" (Cancelled).
-- The `/register` Meeting dropdown only offered the 3 Published meetings as options: "Product Engineering Meetup (9/9/2026)", "Frontend Architecture Summit (9/25/2026)", "Cloud Integration Day (10/25/2026)", plus a placeholder "-- Select Meeting --". Draft/Cancelled meetings were absent.
-- Ticket Type select options observed: "General" (default selected), "VIP", "Early Bird", "Student".
-- These are current seed-data facts, not guarantees; scenarios reference meetings by their visible option text rather than by ID/index so they keep working if seed data is regenerated, as long as the same shape (>=1 Published meeting, >=1 Draft, >=1 Cancelled) holds. If future seed data changes this shape, Scenario 2 in particular will need updated meeting names.
+- Web app at http://localhost:5173, API at http://localhost:5062, both must be running.
+- Requires at least two **Published** meetings in seed data. Observed: "Product Engineering Meetup"
+  (9/9/2026), "Frontend Architecture Summit" (9/25/2026), "Cloud Integration Day" (10/25/2026).
+- Meetings are referenced by visible option text, not by ID or index, so the test survives seed
+  data being regenerated.
 
-## Locator notes (read before writing tests)
+## Locator notes
 
-- Register button — has a proper accessible name: `page.getByRole('button', { name: 'Register' })`.
-- Page heading — level-1 heading with the verbatim (slightly awkward, but that's the real observed copy) text "Register for an Meeting": `page.getByRole('heading', { name: 'Register for an Meeting', level: 1 })`.
-- Success message — a `<p>` with the exact observed text `Registration created successfully!`, rendered above the form fields after a successful submit. Per convention this is a content assertion, so `getByText` is appropriate: `page.getByText('Registration created successfully!')`.
-- **Confirmed accessibility gap on the form fields.** DOM inspection (`document.querySelectorAll('label, select, input')`) showed that the Meeting select, Your Name input, Your Email input, and Ticket Type select each sit next to a `<label>` with the correct visible text, but that label has no `for`/`id` attribute, does not wrap the control, and the control has no `aria-label`/`aria-labelledby`. Result: `getByLabel('Meeting')`, `getByLabel('Your Name')`, `getByLabel('Your Email')`, and `getByLabel('Ticket Type')` all match nothing. This is a real product accessibility defect (worth a separate bug report), not a test-authoring gap. Until it's fixed, use these fallback locators, each justified individually since plain `getByRole(...,{name})` can't work without an accessible name:
-  - Meeting select → `page.locator('select[required]')` (CSS locator). Justification: no accessible name/label exists; this is the only `<select>` on the page carrying the `required` attribute, so it's identified by a real semantic HTML attribute, not by position.
-  - Your Name input → `page.locator('input[type="text"]')` (CSS locator). Justification: no accessible name/label exists; `type="text"` is the only text input on the page, distinguishing it from the email input by attribute rather than DOM order.
-  - Your Email input → `page.locator('input[type="email"]')` (CSS locator). Same justification as above, using `type="email"`.
-  - Ticket Type select → `page.getByRole('combobox').last()` (role locator using position). Justification: no accessible name/label exists, and unlike the Meeting select it has no distinguishing attribute (it is the one `<select>` without `required`); since the form always renders exactly two comboboxes with Ticket Type consistently second in DOM order, `.last()` is the least brittle option remaining that still uses `getByRole`.
-- Meeting detail page "Registrations" count (used to verify server-side persistence) — fully role-based, no CSS needed: `page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Registrations' }) }).getByRole('cell')`.
-- Meeting detail page heading — `page.getByRole('heading', { level: 1 })` shows the meeting's title (e.g. "Product Engineering Meetup"), useful to confirm you landed on the right meeting.
+- Page heading — `getByRole('heading', { name: 'Register for an Meeting', level: 1 })`. The awkward
+  "an Meeting" is the real observed copy, not a typo in this plan.
+- Register button — `getByRole('button', { name: 'Register' })`.
+- Success message — `getByText('Registration created successfully!')`. Content assertion, so
+  `getByText` is the right tool.
+- Registrations count on the meeting detail page — fully role-based:
+  `getByRole('row').filter({ has: getByRole('rowheader', { name: 'Registrations' }) }).getByRole('cell')`.
+- **`getByLabel` does not work on any form field on this page.** The Meeting select, Your Name,
+  Your Email and Ticket Type each sit beside a `<label>` carrying the correct visible text, but that
+  label has no `for`/`id`, does not wrap the control, and the control has no
+  `aria-label`/`aria-labelledby` (confirmed by DOM inspection and visible in
+  `CreateRegistrationPage.tsx`). This is a real product accessibility defect worth its own bug
+  report. Until it is fixed, CSS locators are unavoidable here and are justified per locator:
+  - Meeting select → `page.locator('select[required]')` — the only `<select>` on the page with the
+    `required` attribute, so it is identified by a semantic HTML attribute rather than by position.
+  - Your Name → `page.locator('input[type="text"]')` — the only text input on the page;
+    distinguishes it from the email input by attribute, not DOM order.
+  - Your Email → `page.locator('input[type="email"]')` — same justification, via `type="email"`.
 
-## NOT VERIFIED items
-
-- **NOT VERIFIED: "meeting full" / capacity-based server rejection.** Reason: the Meeting API entity has no capacity/maxAttendees concept at all — inspecting the live API response for a meeting (`GET /api/meetings/{id}`) returned only these keys: `id, title, description, status, startsAt, endsAt, createdAt, updatedAt, internalNotes, adminOnlyCode, venueId, venue, sessions, registrations, feedback`. With no capacity field in the data model, a "meeting full" rejection path cannot be constructed against the current app and is not included as a scenario below, per instructions to record and move on rather than speculate.
-- No other NOT VERIFIED items. Every other scenario, locator, and behavioral claim in this plan (including that duplicate registrations are currently accepted rather than rejected, that the confirmation does not survive reload/back-navigation, and that switching the meeting selection before submit registers the newly-selected meeting) was exercised directly against the running app during plan authoring.
+  The kept scenario leaves Ticket Type at its default, so no locator for it is needed. That
+  deliberately avoids the one control with no distinguishing attribute at all.
 
 ## Test Scenarios
 
@@ -51,79 +66,89 @@ Every scenario that **creates** a registration must use the `attendee` fixture f
 
 **Seed:** `tests/seed.spec.ts`
 
-#### 1.1. Happy path — register for a published meeting
+#### 1.1. Register for a published meeting and see the registration persisted
 
-**File:** `tests/registration/happy-path.spec.ts`
+**File:** `tests/registration/register-for-meeting.spec.ts`
 
-**Steps:**
-  1. Obtain a unique attendee via the `attendee` fixture ({ name, email }).
-  2. Navigate to /register.
-    - expect: The heading 'Register for an Meeting' (level 1) is visible.
-  3. In the Meeting select (page.locator('select[required]')), choose 'Product Engineering Meetup (9/9/2026)'.
-    - expect: The option is selected.
-  4. Fill Your Name (page.locator('input[type="text"]')) with attendee.name.
-  5. Fill Your Email (page.locator('input[type="email"]')) with attendee.email.
-  6. Leave Ticket Type at its default value and click the 'Register' button (getByRole('button', { name: 'Register' })).
-    - expect: The text 'Registration created successfully!' becomes visible.
-    - expect: The Meeting select resets to '-- Select Meeting --' and the Name/Email inputs are cleared back to empty, confirming the form fully resets after a successful submit.
-
-#### 1.2. Meeting dropdown only offers Published meetings
-
-**File:** `tests/registration/meeting-dropdown-published-only.spec.ts`
+**Why this is E2E:** for it to fail, something has to break in the chain the user actually walks —
+the form's own state, the POST to the API, the write to SQLite, and a *different screen* reading
+that write back. No single unit, component or endpoint test spans that. This scenario absorbs what
+were previously three separate scenarios (happy path, server-side persistence, and "the meeting you
+picked is the one you get registered for"); they shared one journey and are cheaper and stricter as
+a single test.
 
 **Steps:**
-  1. Navigate to / and note the full list of meeting titles with their status badges (Published / Draft / Cancelled).
-    - expect: At least one Published, one Draft, and one Cancelled meeting are present in seed data (observed: 'Distributed Systems Workshop' = Draft, 'AI Tools for Developers' = Cancelled).
-  2. Navigate to /register and read all option labels of the Meeting select (page.locator('select[required]')).
-    - expect: Every Published meeting title from the home page appears as an option (matched by visible text, e.g. 'Product Engineering Meetup (9/9/2026)').
-    - expect: Neither 'Distributed Systems Workshop' nor 'AI Tools for Developers' (the Draft and Cancelled meetings) appears in the option list.
-    - expect: The only non-meeting entry is the placeholder '-- Select Meeting --'.
+  1. Obtain a unique attendee via the `attendee` fixture.
+  2. Navigate to `/` and open a Published meeting's detail page (e.g. "Product Engineering
+     Meetup"). Read and store its current Registrations count.
+     - expect: a numeric count is captured.
+  3. Note the Registrations count of a *second* Published meeting (e.g. "Cloud Integration Day") as
+     a control.
+  4. Navigate to `/register`.
+     - expect: the heading 'Register for an Meeting' (level 1) is visible.
+  5. In the Meeting select, choose the first meeting from step 2.
+  6. Fill Your Name with `attendee.name` and Your Email with `attendee.email`. Leave Ticket Type at
+     its default.
+  7. Click 'Register'.
+     - expect: 'Registration created successfully!' becomes visible.
+  8. Return to the first meeting's detail page and re-read the Registrations count.
+     - expect: exactly one greater than the count from step 2 — proving the registration was
+       persisted server-side and not merely an optimistic client-side message.
+  9. Open the control meeting's detail page from step 3.
+     - expect: its count is unchanged — proving the registration was attributed to the meeting the
+       user selected and did not leak to another meeting.
 
-#### 1.3. Successful registration is persisted server-side
+## Moved to another layer
 
-**File:** `tests/registration/persists-server-side.spec.ts`
+- **Meeting dropdown only offers Published meetings** -> component test for
+  `CreateRegistrationPage`. (TODO)
+  What breaks it: the expression `meetings.filter((ev) => ev.status === "Published")` in
+  `CreateRegistrationPage.tsx`. The filter is client-side — the API returns all meetings and the
+  component discards the rest. Render the component with a mocked `fetchMeetings` returning
+  Published + Draft + Cancelled meetings and assert only the Published ones become `<option>`s. No
+  browser round trip needed.
+- **Form resets after a successful submit** -> component test for `CreateRegistrationPage`. (TODO)
+  What breaks it: the four `setState("")` calls in the `handleSubmit` success branch. One
+  component's own state after a mocked-resolved submit.
+- **Changing the meeting selection before submit registers the newly-selected meeting** ->
+  component test for `CreateRegistrationPage`. (TODO)
+  What breaks it: the controlled `<select>`'s `onChange` -> `setMeetingId` -> request payload
+  mapping. Assert the mocked `createRegistration` was called with the last-selected `meetingId`.
+  The end-to-end half of this risk (the selected id actually reaching the right meeting's row in the
+  database) is retained as step 9 of scenario 1.1.
+- **Duplicate registration (same attendee, same meeting) is accepted** -> integration test for
+  `POST /api/registrations`. (TODO)
+  What breaks it: the absence of a uniqueness rule in `RegistrationsEndpoints.cs` — it looks up the
+  attendee by email and reuses it, then unconditionally inserts a new `Registration`. This is a rule
+  about our endpoint and our database, reachable without a browser.
+  **Decide the intended behaviour before writing this test.** The observed behaviour (both
+  submissions succeed, count +2) may be the bug rather than the requirement; a test asserting it
+  would lock the bug in.
+- **Registration is refused for a Draft or Cancelled meeting** -> integration test for
+  `POST /api/registrations`. (TODO — newly identified, not in the original plan.)
+  What breaks it: `RegistrationsEndpoints.cs` never validates the meeting's status, so a client that
+  posts a Draft or Cancelled `MeetingId` directly is accepted. The dropdown filter hides this in the
+  UI, which is exactly why no E2E test can catch it — the risk is only reachable below the browser.
+- **Confirmation does not survive reload or back-navigation** -> browser-native behaviour, not our
+  code. **No test.**
+  What breaks it: nothing of ours. `success` is plain `useState`; a reload or remount discards it
+  because that is what React and the browser do. Asserting it tests the platform, not MeetingFlow.
+  If the confirmation is ever *meant* to survive (a URL param, a redirect to a confirmation route)
+  that is a new feature and earns a new E2E scenario at that point.
 
-**Steps:**
-  1. From the Meetings list (/), open a Published meeting's detail page and read the current 'Registrations' count via getByRole('row').filter({ has: getByRole('rowheader', { name: 'Registrations' }) }).getByRole('cell').
-    - expect: A numeric count is captured, e.g. observed '95' for Product Engineering Meetup at one point during exploration.
-  2. Navigate to /register, select that same meeting, and submit a registration using the attendee fixture (per the happy-path steps).
-    - expect: The success message 'Registration created successfully!' appears.
-  3. Navigate back to the same meeting's detail page and re-read the 'Registrations' count.
-    - expect: The new count is exactly one greater than the count captured before submitting, confirming the registration was persisted server-side rather than being only an optimistic client-side message. (Observed directly: 95 -> 96 for Product Engineering Meetup.)
+## NOT VERIFIED
 
-#### 1.4. Confirmation does not survive reload or back-navigation
-
-**File:** `tests/registration/confirmation-not-persisted.spec.ts`
-
-**Steps:**
-  1. On /register, submit a successful registration using the attendee fixture (per the happy-path steps).
-    - expect: The success message 'Registration created successfully!' is visible.
-  2. Reload the page (e.g. page.reload() or re-navigate to /register).
-    - expect: The success message is no longer visible, and the Meeting/Name/Email fields are back to their empty/default state. (Observed directly.)
-  3. Repeat the flow: submit a new successful registration with a fresh attendee, then navigate away via the 'Meetings' nav link, then use the browser back button to return to /register.
-    - expect: Same outcome as the reload check: the success message is gone and the form is back to its pristine empty state. This confirms the confirmation is transient in-memory component state — it is not persisted via URL, query string, or storage, and resets on any remount. (Observed directly.)
-
-#### 1.5. Changing meeting selection before submit registers the currently-selected meeting
-
-**File:** `tests/registration/meeting-selection-switch.spec.ts`
-
-**Steps:**
-  1. Record the current 'Registrations' count for two different Published meetings, A ('Product Engineering Meetup') and B ('Cloud Integration Day'), via each meeting's detail page (same locator as the persistence scenario).
-  2. Navigate to /register, select meeting A in the Meeting select, then change the selection to meeting B without submitting.
-    - expect: The Meeting select shows meeting B as selected.
-  3. Fill Name/Email using the attendee fixture, leave Ticket Type at its default, and click 'Register'.
-    - expect: The success message 'Registration created successfully!' appears.
-  4. Re-check both meetings' 'Registrations' counts.
-    - expect: Meeting B's count increases by exactly one.
-    - expect: Meeting A's count is unchanged. (Observed directly: switching from 'Product Engineering Meetup' to 'Cloud Integration Day' before submit resulted in Cloud Integration Day going 147 -> 148 while Product Engineering Meetup stayed at 97.)
-
-#### 1.6. Duplicate registration (same attendee, same meeting) is currently accepted, not rejected
-
-**File:** `tests/registration/duplicate-registration-accepted.spec.ts`
-
-**Steps:**
-  1. Navigate to /register, select a Published meeting, and submit a registration using the attendee fixture.
-    - expect: The success message 'Registration created successfully!' appears.
-  2. Immediately submit a second registration for the same meeting, reusing the exact same attendee.name and attendee.email from the first submission.
-    - expect: The second submission also shows 'Registration created successfully!' — no duplicate/conflict error is surfaced. (Observed directly: no rejection occurred.)
-    - expect: The meeting's 'Registrations' count (per the persistence scenario's technique) increases by two in total across both submissions, confirming both were persisted as separate entries. (Observed directly: count went 96 -> 97 after the second, identical submission.)
+- **NOT VERIFIED: "meeting full" / capacity-based rejection — no such feature exists.** The Meeting
+  entity has no capacity concept: `GET /api/meetings/{id}` returns only `id, title, description,
+  status, startsAt, endsAt, createdAt, updatedAt, internalNotes, adminOnlyCode, venueId, venue,
+  sessions, registrations, feedback`, and the POST endpoint performs no count check. This path
+  cannot be constructed against the current data model and is not planned at any layer.
+- **NOT VERIFIED: the API-failure path (`setError` and the `.error` div).** The component renders a
+  server error message, but no failing submission was observed during exploration, so the actual
+  error copy is unknown. If this is worth covering it belongs at component level (mock
+  `createRegistration` to reject, assert the message renders) rather than E2E, since forcing a real
+  API failure from the browser requires stopping the API or intercepting the route.
+- Everything in scenario 1.1 was exercised directly against the running app: dropdown contents,
+  submission, the success text, and the Registrations count incrementing on the selected meeting
+  while another meeting's count stayed put (observed 95 -> 96, and 147 -> 148 on a second meeting
+  while the first held at 97).
