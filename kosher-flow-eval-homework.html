@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Homework: Evaluating the AI Kosher Check Flow</title>
+  <title>Homework: Evaluating the AI Kosher Check System</title>
   <style>
     :root {
       color-scheme: light;
@@ -310,7 +310,7 @@
     <header>
       <div class="header-copy">
         <p class="eyebrow">ZIONET · Homework</p>
-        <h1>Evaluating the AI Kosher Check Flow</h1>
+        <h1>Evaluating the AI Kosher Check System</h1>
       </div>
       <div class="brand-logo">
         <img src="assets/zionet-slide-frame.png" alt="ZIONET">
@@ -452,8 +452,8 @@ dotnet restore .\MeetingFlow.Monolith\MeetingFlow.Monolith.csproj</code></pre>
         across different dish descriptions and edge cases.
       </p>
       <p>
-        The challenge is that the system uses a language model and is therefore nondeterministic:
-        wording, explanations, and sometimes the assessment itself can vary between runs.
+        The system uses a language model, so its responses are nondeterministic:
+        the wording of the explanation and sometimes the assessment itself can vary between runs.
         Your checks should evaluate important properties of the response instead of requiring an exact text match.
       </p>
       <p>
@@ -468,7 +468,8 @@ dotnet restore .\MeetingFlow.Monolith\MeetingFlow.Monolith.csproj</code></pre>
     <section>
       <h2>Required elements</h2>
       <p>
-        If you have not written evals before, use the following structure as the recommended shape of your solution.
+        If you have not written evals before, use the following list as a step-by-step plan.
+        Every item is required.
       </p>
       <ol>
         <li>
@@ -493,8 +494,9 @@ dotnet restore .\MeetingFlow.Monolith\MeetingFlow.Monolith.csproj</code></pre>
         </li>
         <li>
           <strong>Short run guide.</strong>
-          List the settings in <code>appsettings.Local.json</code> for the API key, the evaluated model,
-          and the judge model. Include one complete run command and state where the report will be created.
+          List the exact setting names or environment variables your solution uses for the API key,
+          the evaluated model, and the judge model. Include one complete run command and state where
+          the report will be created.
         </li>
       </ol>
     </section>
