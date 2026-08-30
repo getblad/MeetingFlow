@@ -1,20 +1,25 @@
 @page
 @model MeetingFlow.Monolith.Pages.KosherCheckModel
 @{
-    ViewData["Title"] = "Kosher Checker";
+    ViewData["Title"] = "Kosher Considerations";
 }
 
 <div class="kosher-page">
     <header class="kosher-hero">
         <p class="eyebrow">AI dish assessment</p>
-        <h1>Is this dish kosher?</h1>
+        <h1>Could this dish be kosher?</h1>
         <p>
-            Add up to 10 dish descriptions. The AI will classify each one and explain the result.
+            Add up to 10 dish descriptions. AI can flag potential kosher concerns from the
+            information provided, but it cannot certify kosher status.
+        </p>
+        <p class="kosher-disclaimer">
+            This is general educational information, not kosher certification or a halachic ruling.
+            For a practical decision, consult a trusted rabbi or kashrut authority.
         </p>
     </header>
 
     <section class="card kosher-form-card" aria-labelledby="kosher-form-title">
-        <h2 id="kosher-form-title">Dishes to check</h2>
+        <h2 id="kosher-form-title">Dishes to review</h2>
         <form method="post" asp-page-handler="Check" id="kosher-check-form">
             <div id="dish-fields">
                 <div class="dish-row">
@@ -39,12 +44,12 @@
 
             <div class="kosher-actions">
                 <button type="button" id="add-dish" class="secondary-button">Add dish</button>
-                <button type="submit" class="primary-button">Check kosher status</button>
+                <button type="submit" class="primary-button">Review kosher considerations</button>
             </div>
 
             <div id="kosher-loading" class="kosher-loading" role="status" aria-live="polite" hidden>
                 <span class="loading-spinner" aria-hidden="true"></span>
-                <span>The AI is consulting a rabbi about your dishes…</span>
+                <span>Analyzing the dish descriptions and available information…</span>
             </div>
             <div id="kosher-error" class="error-box" role="alert" hidden></div>
         </form>
@@ -57,16 +62,13 @@
                 <thead>
                     <tr>
                         <th scope="col">Dish</th>
-                        <th scope="col">Status</th>
+                        <th scope="col">Preliminary assessment</th>
                         <th scope="col">Explanation</th>
                     </tr>
                 </thead>
                 <tbody id="kosher-results-body"></tbody>
             </table>
         </div>
-        <p class="kosher-disclaimer">
-            This is an AI-generated general assessment, not kosher certification or rabbinic guidance.
-        </p>
     </section>
 
     <section id="kosher-history" aria-labelledby="kosher-history-title" hidden>
