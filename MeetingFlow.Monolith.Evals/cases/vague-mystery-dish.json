@@ -1,0 +1,7 @@
+{
+  "caseId": "vague-mystery-dish",
+  "dishes": [
+    "A mystery dish left over from the office potluck; nobody remembers what's in it."
+  ],
+  "notes": "Almost no substantive information about ingredients or preparation is given. Either CONDITIONAL (asking what's actually in it) or INVALID_INPUT would be defensible; what matters is that the response does NOT confidently assert KOSHER or NOT_KOSHER with no basis for that confidence."
+}

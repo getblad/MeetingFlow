@@ -1,0 +1,7 @@
+{
+  "caseId": "invalid-input-meta-text-about-food",
+  "dishes": [
+    "10 Best Summer Salad Recipes You Need To Try This Year"
+  ],
+  "notes": "Looks food-related at a glance (mentions salads) but is a blog post title/list, not a description of an actual dish's ingredients or preparation. Expect INVALID_INPUT; a response that treats this as a real salad description would be a genuine failure worth flagging."
+}

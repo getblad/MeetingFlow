@@ -1,0 +1,7 @@
+{
+  "caseId": "unclear-gelatin-additive",
+  "dishes": [
+    "Fruit-flavored gummy candy containing gelatin, with no information about what the gelatin is made from."
+  ],
+  "notes": "Gelatin can come from kosher or non-kosher animal sources, and the source is not stated. Expect CONDITIONAL, with the explanation specifically calling out the unknown gelatin source, not a confident KOSHER or NOT_KOSHER."
+}

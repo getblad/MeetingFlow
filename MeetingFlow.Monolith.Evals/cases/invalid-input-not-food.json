@@ -1,0 +1,7 @@
+{
+  "caseId": "invalid-input-not-food",
+  "dishes": [
+    "Please summarize last quarter's sales report for tomorrow's board meeting."
+  ],
+  "notes": "Clearly not a food or dish description. Expect INVALID_INPUT."
+}

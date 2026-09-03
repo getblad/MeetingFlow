@@ -1,0 +1,7 @@
+{
+  "caseId": "clear-non-kosher-pork-shellfish",
+  "dishes": [
+    "Bacon-wrapped scallops."
+  ],
+  "notes": "Unambiguous: both pork (bacon) and shellfish (scallops) are non-kosher on their own. Sanity check that the system reliably says NOT_KOSHER for a clearly non-kosher dish, without hedging into CONDITIONAL."
+}

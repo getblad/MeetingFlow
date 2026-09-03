@@ -1,0 +1,7 @@
+{
+  "caseId": "meat-dairy-explicit-mix",
+  "dishes": [
+    "Beef stroganoff made with beef strips, sour cream, and butter."
+  ],
+  "notes": "Explicit meat + dairy combination stated directly in the ingredients, nothing to infer. Expect NOT_KOSHER, and the explanation should specifically name the meat-and-dairy mixture as the reason, not something generic."
+}
