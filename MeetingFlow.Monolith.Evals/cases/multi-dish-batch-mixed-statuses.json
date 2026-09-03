@@ -1,0 +1,9 @@
+{
+  "caseId": "multi-dish-batch-mixed-statuses",
+  "dishes": [
+    "Cheeseburger with a beef patty and melted cheddar cheese.",
+    "Steamed white rice with a drizzle of sesame oil.",
+    "qwpoeiur asdlkfj not a real dish"
+  ],
+  "notes": "Three dishes in one submission, expected to land on three different statuses: NOT_KOSHER (meat+dairy), KOSHER or light CONDITIONAL (plain rice), and INVALID_INPUT (gibberish). Mainly a deterministic-check target: verifies the response returns exactly 3 items, in the same order as submitted, each judged independently rather than one dish's issues bleeding into another's result."
+}

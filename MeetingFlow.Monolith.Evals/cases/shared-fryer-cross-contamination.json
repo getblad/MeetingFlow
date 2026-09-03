@@ -1,0 +1,7 @@
+{
+  "caseId": "shared-fryer-cross-contamination",
+  "dishes": [
+    "French fries cooked in the same deep fryer oil that was used to fry breaded shrimp earlier the same day."
+  ],
+  "notes": "The fries themselves contain no non-kosher ingredient, but they share cooking oil/equipment with a non-kosher shellfish item. Expect the response to flag the shared-equipment concern (CONDITIONAL or NOT_KOSHER), not a flat KOSHER that ignores the shared fryer."
+}

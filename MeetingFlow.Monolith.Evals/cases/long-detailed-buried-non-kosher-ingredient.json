@@ -1,0 +1,7 @@
+{
+  "caseId": "long-detailed-buried-non-kosher-ingredient",
+  "dishes": [
+    "Artisanal aged cheddar cheese made from cow's milk, live cultures, sea salt, and a small amount of animal rennet derived from pig stomach lining, aged for fourteen months in a reclaimed oak barrel that previously held prosciutto during its curing process, then hand-wrapped in wax."
+  ],
+  "notes": "A long, detailed description where the disqualifying detail (pork-derived rennet, plus a barrel used for curing pork) is buried in the middle of otherwise ordinary-sounding cheese-making language. Expect NOT_KOSHER; checks whether the model reads carefully all the way through rather than pattern-matching 'cheese' as an easy KOSHER."
+}

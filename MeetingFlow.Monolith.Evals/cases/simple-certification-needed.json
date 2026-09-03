@@ -1,0 +1,7 @@
+{
+  "caseId": "simple-certification-needed",
+  "dishes": [
+    "Grilled chicken breast served with steamed rice and vegetables, from a restaurant."
+  ],
+  "notes": "The description contains no forbidden combination, but a restaurant meat dish still needs kosher slaughter and supervision that cannot be confirmed from this text alone. Expect CONDITIONAL with a request about certification/supervision, not an outright KOSHER."
+}

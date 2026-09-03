@@ -1,0 +1,7 @@
+{
+  "caseId": "dairy-dessert-no-issues",
+  "dishes": [
+    "Vanilla ice cream made only from milk, cream, sugar, and vanilla extract."
+  ],
+  "notes": "A dairy-only dessert with no meat and no ambiguous additive. Expect KOSHER, or a light CONDITIONAL about dairy supervision at most. A clean-path sanity check on the dairy side, complementing the produce-only clean-path case."
+}

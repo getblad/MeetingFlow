@@ -1,0 +1,7 @@
+{
+  "caseId": "hebrew-language-description",
+  "dishes": [
+    "עוגת גבינה עם קרם חמאה, ללא בשר"
+  ],
+  "notes": "A dish description written in Hebrew (translation: 'cheesecake with butter cream, no meat') -- a dairy-only dessert. Tests whether the system correctly reasons about a non-English description and still returns a concise English explanation as instructed, rather than failing, refusing, or replying in Hebrew."
+}

@@ -1,0 +1,7 @@
+{
+  "caseId": "non-kosher-seafood-species",
+  "dishes": [
+    "Grilled octopus with garlic and olive oil."
+  ],
+  "notes": "Octopus lacks fins and scales, so it is not a kosher species regardless of preparation. Expect NOT_KOSHER; checks species-level knowledge rather than ingredient-combination reasoning."
+}

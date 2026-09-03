@@ -1,0 +1,16 @@
+{
+  "caseId": "batch-max-ten-dishes",
+  "dishes": [
+    "Plain white rice.",
+    "Steamed carrots.",
+    "Grilled chicken breast, plain.",
+    "Vanilla yogurt.",
+    "Bacon strips.",
+    "Boiled lentils.",
+    "Cheddar cheese slice.",
+    "Grilled shrimp.",
+    "Apple slices.",
+    "Plain black coffee."
+  ],
+  "notes": "Exercises the maximum allowed batch size of 10 dishes in a single request. Mainly a deterministic-check target: verifies exactly 10 results come back, in the same order as submitted, with no dish dropped, merged, or duplicated, even though the dishes span kosher, non-kosher, and pareve items."
+}

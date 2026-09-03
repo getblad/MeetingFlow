@@ -1,0 +1,7 @@
+{
+  "caseId": "invalid-input-gibberish",
+  "dishes": [
+    "asdkjf qpwoeiru xczvbn qqqqq"
+  ],
+  "notes": "Meaningless text, not a dish description. Expect INVALID_INPUT."
+}

@@ -5,6 +5,7 @@
   </Folder>
   <Project Path="MeetingFlow.Monolith/MeetingFlow.Monolith.csproj" />
   <Project Path="MeetingFlow.Monolith.Tests/MeetingFlow.Monolith.Tests.csproj" />
+  <Project Path="MeetingFlow.Monolith.Evals/MeetingFlow.Monolith.Evals.csproj" />
   <Folder Name="/MeetingFlow.Microservices/">
     <Project Path="MeetingFlow.Microservices/src/Contracts/DataAccessor.Contracts/DataAccessor.Contracts.csproj" />
     <Project Path="MeetingFlow.Microservices/src/Contracts/SchedulingEngine.Contracts/SchedulingEngine.Contracts.csproj" />
