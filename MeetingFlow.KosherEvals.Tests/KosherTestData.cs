@@ -6,9 +6,9 @@ namespace MeetingFlow.KosherEvals.Tests;
 // Goal: the model identifies what needs clarification and explains why it matters
 // for assessing whether a dish is kosher. When the information is sufficient,
 // it explains the decision without inventing missing details.
-public static class KosherTestData
+public class KosherTestData
 {
-    public static readonly KosherTestCase[] All =
+    public KosherTestCase[] Cases { get; } =
     [
         // Typical cases: information is omitted or explicitly stated as unknown.
         new(

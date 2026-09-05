@@ -21,4 +21,8 @@
     <ProjectReference Include="..\MeetingFlow.Monolith\MeetingFlow.Monolith.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="Always" TargetPath="eval-settings/appsettings.json" />
+  </ItemGroup>
+
 </Project>

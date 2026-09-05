@@ -22,11 +22,34 @@ The judge model must support strict JSON-schema output. Schema validation remain
 
 ## Запуск / Run
 
+The project is included in `MeetingFlow.slnx`, but the paid test is skipped by default,
+including when running this project on its own.
+`[EvalFact]` behaves like `[Fact]`, but skips the test unless `Evals:Enabled` is `true`
+in this test project's `appsettings.json`:
+
+```json
+{
+  "Evals": {
+    "Enabled": false
+  }
+}
+```
+
+Set `Enabled` to `true`, save the file, and configure the API keys before running.
+Restore `false` after the run and before committing: while enabled, the paid test also runs
+with all solution tests. The old `RUN_KOSHER_EVALS` environment variable is no longer used.
+
 Из корня репозитория / From the repository root:
 
 ```powershell
 dotnet test MeetingFlow.KosherEvals.Tests --logger "console;verbosity=normal"
 ```
+
+Build after changing the file; do not use `--no-build` with an outdated settings copy.
+For the VS Code test button, rebuild the test project and refresh test discovery if the old
+skip status is still displayed. API keys must be available to the editor's test process.
+The build copies this file into `eval-settings/appsettings.json` beside the test assembly
+to avoid a collision with the real application's settings. Edit the source file, not the copy in `bin`.
 
 Каждый случай отправляется отдельно: запрос настоящему сервису, затем запрос судье.
 Для шести случаев это шесть запросов сервису и шесть судье, последовательно.

@@ -11,7 +11,7 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
     // and explains why it matters for assessing whether a dish is kosher.
     // When the information is sufficient, it should explain the decision without
     // unnecessary clarification. It must not invent facts about the dish.
-    [Fact]
+    [EvalFact]
     public async Task Kosher_flow_passes_eval_cases()
     {
         using var setup = new KosherTestSetup();
@@ -19,7 +19,7 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         var startedAt = DateTimeOffset.UtcNow;
 
-        var cases = KosherTestData.All;
+        var cases = new KosherTestData().Cases;
 
         var evaluations = new List<CaseEvaluation>();
         string? error = null;
