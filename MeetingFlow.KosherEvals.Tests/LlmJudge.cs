@@ -45,9 +45,14 @@ public sealed class LlmJudge(IChatClient chatClient)
         </criteria>
 
         <scoring>
-        Score = 0: criterion 1 is not met, regardless of criterion 2.
-        Score = 1: criterion 1 is met, but criterion 2 is not met.
-        Score = 2: both criteria are met.
+        Score = 0: criterion 1 is not met: the required clarification or expected decision is missing,
+        incorrect, contradictory, or requests information that was already supplied. Because the essential
+        clarification or decision is absent, give 0 regardless of whether criterion 2 appears to be met.
+        Score = 1: criterion 1 is met: the required clarification or expected decision is present and correct.
+        However, criterion 2 is not met because the explanation does not explain why the missing information
+        affects the assessment, or why the stated facts justify the decision.
+        Score = 2: both criteria are met. The answer gives the required clarification or correct decision,
+        and its reasoning connects the missing information or stated facts to the kosher assessment.
         Do not lower Score solely because an additional dish-specific fact is unsupported.
         Report such facts separately in HasInventedFacts.
         </scoring>
