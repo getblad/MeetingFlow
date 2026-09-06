@@ -25,18 +25,17 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
         var cases = new KosherTestData().Cases;
 
         var evaluations = new List<CaseEvaluation>();
-        string? error = null;
-        var stage = "service";
-        try
+        foreach (var testCase in cases)
         {
-            foreach (var testCase in cases)
+            DishAssessmentItem? actual = null;
+
+            try
             {
                 // Send each case separately, without expectations or other dishes.
                 var dish = new DishCheckEntry(testCase.Id, testCase.Dish);
                 var result = await service.AssessAsync([dish], timeout.Token);
-                var actual = Assert.Single(result.Items, item => item.DishId == testCase.Id);
+                actual = Assert.Single(result.Items, item => item.DishId == testCase.Id);
 
-                stage = $"judge: {testCase.Id}";
                 var judgment = await setup.Judge.EvaluateAsync(testCase, actual.Explanation, timeout.Token);
 
                 // Explicitly show what is checked and when the case passes.
@@ -57,45 +56,63 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
                     Passed = codePassed && lengthPassed && judgePassed
                 });
             }
-        }
-        catch (Exception exception)
-        {
-            // Do not turn an execution error into score 0 or copy raw exception messages into reports.
-            error = $"Stage '{stage}' failed ({exception.GetType().Name}).";
-            throw;
-        }
-        finally
-        {
-            // Save JSON and HTML before assertions, including incomplete runs after an error.
-            var report = new EvalReport(
-                StartedAtUtc: startedAt,
-                Model: setup.Model,
-                JudgeModel: setup.JudgeModel,
-                TotalCases: cases.Length,
-                MaximumExplanationLength: maximumExplanationLength,
-                Cases: evaluations,
-                Error: error);
+            catch (Exception exception)
+            {
+                // Keep the failed case in the report and continue with the remaining cases.
+                var failedStep = actual is null ? "Service" : "Judge";
+                var codePassed = actual is not null && actual.Status == testCase.ExpectedStatus;
+                var explanationLength = actual?.Explanation.Length;
+                var lengthPassed = explanationLength is not null && explanationLength <= maximumExplanationLength;
 
-            var reportsDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "reports"));
-            var reportFiles = await ReportWriter.SaveJsonAndHtmlAsync(report, reportsDirectory);
-
-            output.WriteLine($"JSON: {reportFiles.JsonPath}");
-            output.WriteLine($"HTML: {reportFiles.HtmlPath}");
+                evaluations.Add(new CaseEvaluation
+                {
+                    Case = testCase,
+                    Actual = actual,
+                    Judgment = null,
+                    CodePassed = codePassed,
+                    ExplanationLength = explanationLength,
+                    LengthPassed = lengthPassed,
+                    JudgePassed = false,
+                    Passed = false,
+                    Error = $"{failedStep} failed ({exception.GetType().Name}): {exception.Message}"
+                });
+            }
         }
+
+        // Save JSON and HTML before assertions, so failed cases remain available for investigation.
+        var report = new EvalReport(
+            StartedAtUtc: startedAt,
+            Model: setup.Model,
+            JudgeModel: setup.JudgeModel,
+            TotalCases: cases.Length,
+            MaximumExplanationLength: maximumExplanationLength,
+            Cases: evaluations);
+
+        var reportsDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "reports"));
+        var reportFiles = await ReportWriter.SaveJsonAndHtmlAsync(report, reportsDirectory);
+
+        output.WriteLine($"JSON: {reportFiles.JsonPath}");
+        output.WriteLine($"HTML: {reportFiles.HtmlPath}");
 
         Assert.All(evaluations, evaluation =>
         {
+            Assert.True(evaluation.Error is null,
+                $"{evaluation.Case.Id}: {evaluation.Error}");
+
+            var actual = Assert.IsType<DishAssessmentItem>(evaluation.Actual);
+            var judgment = Assert.IsType<JudgeResult>(evaluation.Judgment);
+
             // Assert the saved results without repeating the comparison rules.
             Assert.True(evaluation.CodePassed,
-                $"{evaluation.Case.Id}: expected {evaluation.Case.ExpectedStatus}, actual {evaluation.Actual.Status}.");
+                $"{evaluation.Case.Id}: expected {evaluation.Case.ExpectedStatus}, actual {actual.Status}.");
             Assert.True(evaluation.LengthPassed,
                 $"{evaluation.Case.Id}: explanation has {evaluation.ExplanationLength} characters; " +
                 $"maximum is {maximumExplanationLength}.");
             Assert.True(evaluation.JudgePassed,
-                $"{evaluation.Case.Id}: Score = {evaluation.Judgment.Score}, " +
-                $"HasInventedFacts = {evaluation.Judgment.HasInventedFacts}. " +
-                $"Score reasoning: {evaluation.Judgment.ScoreReasoning} " +
-                $"Invented facts reasoning: {evaluation.Judgment.InventedFactsReasoning}");
+                $"{evaluation.Case.Id}: Score = {judgment.Score}, " +
+                $"HasInventedFacts = {judgment.HasInventedFacts}. " +
+                $"Score reasoning: {judgment.ScoreReasoning} " +
+                $"Invented facts reasoning: {judgment.InventedFactsReasoning}");
         });
     }
 }

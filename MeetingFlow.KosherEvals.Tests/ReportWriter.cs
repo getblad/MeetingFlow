@@ -53,16 +53,26 @@ public static class ReportWriter
         var rows = new StringBuilder();
         foreach (var item in report.Cases)
         {
+            var actualStatus = item.Actual?.Status.ToString() ?? "Not available";
+            var statusCheck = item.Actual is null ? "Not run" : item.CodePassed ? "Pass" : "Fail";
+            var lengthCheck = item.ExplanationLength is null
+                ? "Not run"
+                : $"{item.ExplanationLength} / {report.MaximumExplanationLength}<br>{(item.LengthPassed ? "Pass" : "Fail")}";
+            var judgeScore = item.Judgment is null ? "Not run" : $"{item.Judgment.Score} / 2";
+            var inventedFacts = item.Judgment is null ? "Not run" : item.Judgment.HasInventedFacts ? "Yes" : "No";
+            var result = item.Error is not null ? "Error" : item.Passed ? "Passed" : "Failed";
+            var resultClass = item.Passed ? "pass" : "fail";
+
             rows.AppendLine($"""
                 <tr>
                   <th scope="row">{Encode(item.Case.Id)}</th>
                   <td>{Encode(item.Case.ExpectedStatus.ToString())}</td>
-                  <td>{Encode(item.Actual.Status.ToString())}</td>
-                  <td>{(item.CodePassed ? "Pass" : "Fail")}</td>
-                  <td class="{(item.LengthPassed ? "pass" : "fail")}">{item.ExplanationLength} / {report.MaximumExplanationLength}<br>{(item.LengthPassed ? "Pass" : "Fail")}</td>
-                  <td>{item.Judgment.Score} / 2</td>
-                  <td>{(item.Judgment.HasInventedFacts ? "Yes" : "No")}</td>
-                  <td class="{(item.Passed ? "pass" : "fail")}">{(item.Passed ? "Passed" : "Failed")}</td>
+                  <td>{Encode(actualStatus)}</td>
+                  <td>{statusCheck}</td>
+                  <td>{lengthCheck}</td>
+                  <td>{judgeScore}</td>
+                  <td>{inventedFacts}</td>
+                  <td class="{resultClass}">{result}</td>
                 </tr>
                 <tr><td colspan="8"><details>
                   <summary>Description, expectations and response</summary>
@@ -70,11 +80,12 @@ public static class ReportWriter
                     <dt>Dish</dt><dd>{Encode(item.Case.Dish)}</dd>
                     <dt>Expected clarification</dt><dd>{Encode(item.Case.ExpectedClarification ?? "No clarification needed")}</dd>
                     <dt>Expected reasoning</dt><dd>{Encode(item.Case.ExpectedReasoning)}</dd>
-                    <dt>Service response</dt><dd>{Encode(item.Actual.Explanation)}</dd>
-                    <dt>Score reasoning</dt><dd>{Encode(item.Judgment.ScoreReasoning)}</dd>
-                    <dt>Judge score</dt><dd>{item.Judgment.Score} / 2</dd>
-                    <dt>Invented facts reasoning</dt><dd>{Encode(item.Judgment.InventedFactsReasoning)}</dd>
-                    <dt>Has invented facts</dt><dd>{(item.Judgment.HasInventedFacts ? "Yes" : "No")}</dd>
+                    <dt>Service response</dt><dd>{Encode(item.Actual?.Explanation ?? "Not available")}</dd>
+                    <dt>Score reasoning</dt><dd>{Encode(item.Judgment?.ScoreReasoning ?? "Not run")}</dd>
+                    <dt>Judge score</dt><dd>{judgeScore}</dd>
+                    <dt>Invented facts reasoning</dt><dd>{Encode(item.Judgment?.InventedFactsReasoning ?? "Not run")}</dd>
+                    <dt>Has invented facts</dt><dd>{inventedFacts}</dd>
+                    {(item.Error is null ? "" : $"<dt>Error</dt><dd>{Encode(item.Error)}</dd>")}
                   </dl>
                 </details></td></tr>
                 """);
