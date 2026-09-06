@@ -32,7 +32,6 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
             foreach (var testCase in cases)
             {
                 // Send each case separately, without expectations or other dishes.
-                stage = $"service: {testCase.Id}";
                 var dish = new DishCheckEntry(testCase.Id, testCase.Dish);
                 var result = await service.AssessAsync([dish], timeout.Token);
                 var actual = Assert.Single(result.Items, item => item.DishId == testCase.Id);
