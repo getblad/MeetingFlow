@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <None Update="appsettings.json" CopyToOutputDirectory="Always" TargetPath="eval-settings/appsettings.json" />
+    <None Update="appsettings.Local.json" CopyToOutputDirectory="Always" TargetPath="eval-settings/appsettings.Local.json" />
   </ItemGroup>
 
 </Project>

@@ -18,3 +18,4 @@ dist/
 .idea/
 *.swp
 *.swo
+MeetingFlow.KosherEvals.Tests/appsettings.Local.json

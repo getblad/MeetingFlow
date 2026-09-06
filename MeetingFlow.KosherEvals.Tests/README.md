@@ -5,8 +5,8 @@ One test calls the real service, compares statuses, and sends explanations to a 
 
 ## Настройки / Settings
 
-Задайте переменные окружения в терминале, из которого будете запускать тест. Не сохраняйте ключи в репозитории.
-Set environment variables in the terminal used to run the test. Do not save keys in the repository.
+Задайте настройки в `MeetingFlow.KosherEvals.Tests/appsettings.Local.json` (секции `AiChat` и `AiJudge`, поля `ApiKey`, `Model`, `Endpoint`) или через переменные окружения ниже. Переменные окружения имеют приоритет. Локальный файл исключён из Git и копируется при сборке; после его изменения пересоберите проект.
+Configure `MeetingFlow.KosherEvals.Tests/appsettings.Local.json` (`AiChat` and `AiJudge` sections with `ApiKey`, `Model`, and `Endpoint`) or use the environment variables below. Environment variables take precedence. The local file is ignored by Git and copied during build; rebuild after editing it.
 
 | Переменная / Variable | Назначение / Purpose | По умолчанию / Default |
 | --- | --- | --- |

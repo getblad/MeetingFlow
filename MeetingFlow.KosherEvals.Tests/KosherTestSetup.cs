@@ -1,6 +1,7 @@
 using System.ClientModel;
 using MeetingFlow.Monolith.Services;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenAI;
 
@@ -14,15 +15,24 @@ public sealed class KosherTestSetup : IDisposable
 
     public OpenAiKosherAssessmentService Service { get; }
     public LlmJudge Judge { get; }
-    public string Model { get; } = Environment.GetEnvironmentVariable("AiChat__Model") ?? "gpt-5-mini";
-    public string JudgeModel { get; } = Environment.GetEnvironmentVariable("AiJudge__Model") ?? "openai/gpt-oss-120b";
+    public string Model { get; }
+    public string JudgeModel { get; }
 
     public KosherTestSetup()
     {
-        chatClient = CreateChatClient("AiChat", Model, "https://api.openai.com/v1");
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("eval-settings/appsettings.Local.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        Model = configuration["AiChat:Model"] ?? "gpt-5-mini";
+        JudgeModel = configuration["AiJudge:Model"] ?? "openai/gpt-oss-120b";
+
+        chatClient = CreateChatClient(configuration, "AiChat", Model, "https://api.openai.com/v1");
         try
         {
-            judgeClient = CreateChatClient("AiJudge", JudgeModel, "https://api.groq.com/openai/v1");
+            judgeClient = CreateChatClient(configuration, "AiJudge", JudgeModel, "https://api.groq.com/openai/v1");
         }
         catch
         {
@@ -41,16 +51,16 @@ public sealed class KosherTestSetup : IDisposable
         Judge = new LlmJudge(judgeClient);
     }
 
-    private static IChatClient CreateChatClient(string prefix, string model, string defaultEndpoint)
+    private static IChatClient CreateChatClient(
+        IConfiguration configuration, string prefix, string model, string defaultEndpoint)
     {
-        // Read API keys only from the environment, never from source code.
-        var endpoint = Environment.GetEnvironmentVariable($"{prefix}__Endpoint") ?? defaultEndpoint;
-        var apiKey = Environment.GetEnvironmentVariable($"{prefix}__ApiKey");
+        var endpoint = configuration[$"{prefix}:Endpoint"] ?? defaultEndpoint;
+        var apiKey = configuration[$"{prefix}:ApiKey"];
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             throw new InvalidOperationException(
-                $"Set {prefix}__ApiKey before running the eval test.");
+                $"Set {prefix}:ApiKey in appsettings.Local.json or {prefix}__ApiKey in the environment before running the eval test.");
         }
 
         var client = new OpenAIClient(
