@@ -5,6 +5,7 @@ public sealed record EvalReport(
     string Model,
     string JudgeModel,
     int TotalCases,
+    int MaximumExplanationLength,
     List<CaseEvaluation> Cases,
     string? Error = null)
 {

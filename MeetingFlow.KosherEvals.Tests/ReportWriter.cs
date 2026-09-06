@@ -59,11 +59,12 @@ public static class ReportWriter
                   <td>{Encode(item.Case.ExpectedStatus.ToString())}</td>
                   <td>{Encode(item.Actual.Status.ToString())}</td>
                   <td>{(item.CodePassed ? "Pass" : "Fail")}</td>
+                  <td class="{(item.LengthPassed ? "pass" : "fail")}">{item.ExplanationLength} / {report.MaximumExplanationLength}<br>{(item.LengthPassed ? "Pass" : "Fail")}</td>
                   <td>{item.Judgment.Score} / 2</td>
                   <td>{(item.Judgment.HasInventedFacts ? "Yes" : "No")}</td>
                   <td class="{(item.Passed ? "pass" : "fail")}">{(item.Passed ? "Passed" : "Failed")}</td>
                 </tr>
-                <tr><td colspan="7"><details>
+                <tr><td colspan="8"><details>
                   <summary>Description, expectations and response</summary>
                   <dl>
                     <dt>Dish</dt><dd>{Encode(item.Case.Dish)}</dd>
@@ -112,10 +113,13 @@ public static class ReportWriter
                  Average score of completed cases: {{Encode(average)}} (maximum 2)</p>
               {{(report.Error is null ? "" : $"<p class=\"notice\">{Encode(report.Error)}</p>")}}
               <div class="table-wrap"><table>
-                <thead><tr><th>Case</th><th>Expected</th><th>Actual</th><th>Code check</th><th>Judge score</th><th>Invented facts</th><th>Result</th></tr></thead>
+                <thead><tr><th>Case</th><th>Expected</th><th>Actual</th><th>Status check</th><th>Length check</th><th>Judge score</th><th>Invented facts</th><th>Result</th></tr></thead>
                 <tbody>{{rows}}</tbody>
               </table></div>
-              <p>Pass: matching status, score of 2, and no invented facts.</p>
+              <p>Pass: matching status, explanation length at most {{report.MaximumExplanationLength}} characters,
+                 score of 2, and no invented facts. All criteria are blocking.</p>
+              <p>Length includes spaces and line breaks, measured using C# string.Length.
+                 A high judge score cannot compensate for a failed code check.</p>
             </main></body></html>
             """;
 

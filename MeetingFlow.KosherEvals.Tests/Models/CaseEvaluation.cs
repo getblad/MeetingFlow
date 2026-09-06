@@ -10,6 +10,8 @@ public class CaseEvaluation
     public required JudgeResult Judgment { get; init; }
 
     public required bool CodePassed { get; init; }
+    public required int ExplanationLength { get; init; }
+    public required bool LengthPassed { get; init; }
     public required bool JudgePassed { get; init; }
     public required bool Passed { get; init; }
 }

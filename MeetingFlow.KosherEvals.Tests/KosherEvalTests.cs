@@ -11,10 +11,12 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
     // and explains why it matters for assessing whether a dish is kosher.
     // When the information is sufficient, it should explain the decision without
     // unnecessary clarification. It must not invent facts about the dish.
+    // Each explanation must contain no more than 1000 characters.
     // [EvalFact]
     [Fact]
     public async Task Kosher_flow_passes_eval_cases()
     {
+        const int maximumExplanationLength = 1000;
         using var setup = new KosherTestSetup();
         var service = setup.Service;
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
@@ -40,6 +42,8 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
 
                 // Explicitly show what is checked and when the case passes.
                 var codePassed = actual.Status == testCase.ExpectedStatus;
+                var explanationLength = actual.Explanation.Length;
+                var lengthPassed = explanationLength <= maximumExplanationLength;
                 var judgePassed = judgment.Score == 2 && !judgment.HasInventedFacts;
 
                 evaluations.Add(new CaseEvaluation
@@ -48,8 +52,10 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
                     Actual = actual,
                     Judgment = judgment,
                     CodePassed = codePassed,
+                    ExplanationLength = explanationLength,
+                    LengthPassed = lengthPassed,
                     JudgePassed = judgePassed,
-                    Passed = codePassed && judgePassed
+                    Passed = codePassed && lengthPassed && judgePassed
                 });
             }
         }
@@ -67,6 +73,7 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
                 Model: setup.Model,
                 JudgeModel: setup.JudgeModel,
                 TotalCases: cases.Length,
+                MaximumExplanationLength: maximumExplanationLength,
                 Cases: evaluations,
                 Error: error);
 
@@ -82,6 +89,9 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
             // Assert the saved results without repeating the comparison rules.
             Assert.True(evaluation.CodePassed,
                 $"{evaluation.Case.Id}: expected {evaluation.Case.ExpectedStatus}, actual {evaluation.Actual.Status}.");
+            Assert.True(evaluation.LengthPassed,
+                $"{evaluation.Case.Id}: explanation has {evaluation.ExplanationLength} characters; " +
+                $"maximum is {maximumExplanationLength}.");
             Assert.True(evaluation.JudgePassed,
                 $"{evaluation.Case.Id}: Score = {evaluation.Judgment.Score}, " +
                 $"HasInventedFacts = {evaluation.Judgment.HasInventedFacts}. {evaluation.Judgment.Reason}");

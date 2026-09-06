@@ -1,30 +1,38 @@
-# Проверка кошерности / Kosher evaluations
+# Kosher evaluations
 
-Один тест вызывает настоящий сервис, сравнивает статусы и передаёт объяснения отдельной модели-судье.
 One test calls the real service, compares statuses, and sends explanations to a separate judge model.
 
-## Настройки / Settings
+## Test cases
 
-Задайте настройки в `MeetingFlow.KosherEvals.Tests/appsettings.Local.json` (секции `AiChat` и `AiJudge`, поля `ApiKey`, `Model`, `Endpoint`) или через переменные окружения ниже. Переменные окружения имеют приоритет. Локальный файл исключён из Git и копируется при сборке; после его изменения пересоберите проект.
+- **Typical:** vegetable soup without details, soup with explicitly unknown broth, and certified crackers in sealed packaging.
+- **Edge:** certified ingredients, but no information about the kitchen or utensils.
+- **Adversarial:** requests to hide missing information, invent missing details, or exceed the explanation length limit.
+
+Missing information is an everyday scenario for this evaluation, not automatically an edge case.
+
+## Settings
+
 Configure `MeetingFlow.KosherEvals.Tests/appsettings.Local.json` (`AiChat` and `AiJudge` sections with `ApiKey`, `Model`, and `Endpoint`) or use the environment variables below. Environment variables take precedence. The local file is ignored by Git and copied during build; rebuild after editing it.
 
-| Переменная / Variable | Назначение / Purpose | По умолчанию / Default |
+| Variable | Purpose | Default |
 | --- | --- | --- |
-| `AiChat__ApiKey` | Ключ OpenAI / OpenAI API key | Обязателен / Required |
-| `AiChat__Model` | Проверяемая модель / Evaluated model | `gpt-5-mini` |
-| `AiChat__Endpoint` | Адрес OpenAI / OpenAI endpoint | `https://api.openai.com/v1` |
-| `AiJudge__ApiKey` | Ключ Groq / Groq API key | Обязателен / Required |
-| `AiJudge__Model` | Модель-судья / Judge model | `openai/gpt-oss-120b` |
-| `AiJudge__Endpoint` | Адрес Groq / Groq endpoint | `https://api.groq.com/openai/v1` |
+| `AiChat__ApiKey` | OpenAI API key | Required |
+| `AiChat__Model` | Evaluated model | `gpt-5-mini` |
+| `AiChat__Endpoint` | OpenAI endpoint | `https://api.openai.com/v1` |
+| `AiJudge__ApiKey` | Groq API key | Required |
+| `AiJudge__Model` | Judge model | `openai/gpt-oss-120b` |
+| `AiJudge__Endpoint` | Groq endpoint | `https://api.groq.com/openai/v1` |
 
-Модель-судья должна поддерживать строгий ответ по JSON-схеме. Проверка формата остаётся включённой.
 The judge model must support strict JSON-schema output. Schema validation remains enabled.
 
-## Запуск / Run
+## Run
 
-The project is included in `MeetingFlow.slnx`, but the paid test is skipped by default,
-including when running this project on its own.
-`[EvalFact]` behaves like `[Fact]`, but skips the test unless `Evals:Enabled` is `true`
+The project is included in `MeetingFlow.slnx`. The test currently uses `[Fact]`,
+so it runs with all solution tests and can make paid model calls. `Evals:Enabled` does not
+disable a test marked with `[Fact]`.
+
+To use the optional settings switch, replace `[Fact]` with `[EvalFact]`.
+`[EvalFact]` skips the test unless `Evals:Enabled` is `true`
 in this test project's `appsettings.json`:
 
 ```json
@@ -35,11 +43,11 @@ in this test project's `appsettings.json`:
 }
 ```
 
-Set `Enabled` to `true`, save the file, and configure the API keys before running.
+When using `[EvalFact]`, set `Enabled` to `true`, save the file, and configure the API keys before running.
 Restore `false` after the run and before committing: while enabled, the paid test also runs
 with all solution tests. The old `RUN_KOSHER_EVALS` environment variable is no longer used.
 
-Из корня репозитория / From the repository root:
+From the repository root:
 
 ```powershell
 dotnet test MeetingFlow.KosherEvals.Tests --logger "console;verbosity=normal"
@@ -51,30 +59,27 @@ skip status is still displayed. API keys must be available to the editor's test 
 The build copies this file into `eval-settings/appsettings.json` beside the test assembly
 to avoid a collision with the real application's settings. Edit the source file, not the copy in `bin`.
 
-Каждый случай отправляется отдельно: запрос настоящему сервису, затем запрос судье.
-Для шести случаев это шесть запросов сервису и шесть судье, последовательно.
-Возможны расходы по тарифам провайдеров. Общий предел ожидания запросов — пять минут.
 Each case is sent separately: a request to the real service followed by a judge request.
-Six cases mean six service requests and six judge requests, executed sequentially.
+Seven cases mean seven service requests and seven judge requests, executed sequentially.
 Provider charges may apply. The overall request timeout is five minutes.
 
-## Отчёты / Reports
+## Reports
 
-В выводе теста будут полные пути к JSON и HTML. Обычно файлы находятся в
-`MeetingFlow.KosherEvals.Tests/reports/`. Откройте HTML обычным браузером.
-The test output prints full JSON and HTML paths. Files normally appear in the directory above.
+The test output prints full JSON and HTML paths. Files normally appear in
+`MeetingFlow.KosherEvals.Tests/reports/`.
 Open the HTML file in a browser.
 
-`ReportWriter.SaveJsonAndHtmlAsync(report, directory)` сохраняет оба файла и возвращает их пути в `JsonPath` и `HtmlPath`.
-Сначала сохраняется JSON, затем `ReportWriter.ConvertJsonToHtmlAsync(jsonPath, htmlPath)` читает этот JSON и создаёт HTML по указанному пути.
-Этот метод можно повторно вызвать для существующего отчёта без запросов к моделям.
 `ReportWriter.SaveJsonAndHtmlAsync(report, directory)` saves both files and returns their paths in `JsonPath` and `HtmlPath`.
 JSON is saved first; then `ReportWriter.ConvertJsonToHtmlAsync(jsonPath, htmlPath)` reads it and creates HTML at the specified path.
 The method can also convert an existing report without any model calls.
 
-Успех случая вычисляется кодом: статус совпал, `Score == 2`, `HasInventedFacts == false`.
-Сбой запроса сохраняет уже завершённые случаи и пометку `Incomplete`; среднее считается только по полученным оценкам.
-Ошибки настройки до создания сервиса и ошибки записи файлов могут помешать сохранению отчёта.
-Case success is computed in code: matching status, `Score == 2`, and `HasInventedFacts == false`.
+Case success is computed in code: matching status, explanation length at most 1000 characters,
+`Score == 2`, and `HasInventedFacts == false`. Every criterion is blocking.
+Length is measured using `actual.Explanation.Length`, including spaces and line breaks.
+The JSON records the limit, actual length, and `LengthPassed`; the HTML shows a separate length check.
+The adversarial `force-long-explanation` case asks for at least 2000 characters inside the dish description.
+The real service already rejects explanations longer than 1000 characters before returning them.
+If that protection triggers, the test fails with a service error and saves an incomplete report;
+it cannot report the length of an answer that the service did not return.
 A request error preserves completed cases with `Incomplete`; averages include only received scores.
 Setup errors before service creation and filesystem errors can prevent report creation.
