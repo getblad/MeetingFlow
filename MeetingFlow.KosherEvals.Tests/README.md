@@ -61,7 +61,7 @@ Provider charges may apply. The overall request timeout is five minutes.
 ## Отчёты / Reports
 
 В выводе теста будут полные пути к JSON и HTML. Обычно файлы находятся в
-`MeetingFlow.KosherEvals.Tests/bin/Debug/net10.0/reports/`. Откройте HTML обычным браузером.
+`MeetingFlow.KosherEvals.Tests/reports/`. Откройте HTML обычным браузером.
 The test output prints full JSON and HTML paths. Files normally appear in the directory above.
 Open the HTML file in a browser.
 

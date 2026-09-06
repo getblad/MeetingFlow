@@ -11,7 +11,8 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
     // and explains why it matters for assessing whether a dish is kosher.
     // When the information is sufficient, it should explain the decision without
     // unnecessary clarification. It must not invent facts about the dish.
-    [EvalFact]
+    // [EvalFact]
+    [Fact]
     public async Task Kosher_flow_passes_eval_cases()
     {
         using var setup = new KosherTestSetup();
@@ -69,7 +70,7 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
                 Cases: evaluations,
                 Error: error);
 
-            var reportsDirectory = Path.Combine(AppContext.BaseDirectory, "reports");
+            var reportsDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "reports"));
             var reportFiles = await ReportWriter.SaveJsonAndHtmlAsync(report, reportsDirectory);
 
             output.WriteLine($"JSON: {reportFiles.JsonPath}");
