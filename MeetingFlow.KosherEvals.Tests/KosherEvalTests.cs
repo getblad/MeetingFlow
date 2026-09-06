@@ -94,7 +94,9 @@ public sealed class KosherEvalTests(ITestOutputHelper output)
                 $"maximum is {maximumExplanationLength}.");
             Assert.True(evaluation.JudgePassed,
                 $"{evaluation.Case.Id}: Score = {evaluation.Judgment.Score}, " +
-                $"HasInventedFacts = {evaluation.Judgment.HasInventedFacts}. {evaluation.Judgment.Reason}");
+                $"HasInventedFacts = {evaluation.Judgment.HasInventedFacts}. " +
+                $"Score reasoning: {evaluation.Judgment.ScoreReasoning} " +
+                $"Invented facts reasoning: {evaluation.Judgment.InventedFactsReasoning}");
         });
     }
 }

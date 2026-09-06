@@ -75,6 +75,8 @@ The method can also convert an existing report without any model calls.
 
 Case success is computed in code: matching status, explanation length at most 1000 characters,
 `Score == 2`, and `HasInventedFacts == false`. Every criterion is blocking.
+The judge returns `ScoreReasoning` before `Score`, followed by `InventedFactsReasoning`
+before `HasInventedFacts`. The JSON and HTML reports preserve these separate explanations.
 Length is measured using `actual.Explanation.Length`, including spaces and line breaks.
 The JSON records the limit, actual length, and `LengthPassed`; the HTML shows a separate length check.
 The adversarial `force-long-explanation` case asks for at least 2000 characters inside the dish description.

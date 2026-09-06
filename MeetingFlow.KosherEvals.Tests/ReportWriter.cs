@@ -71,7 +71,10 @@ public static class ReportWriter
                     <dt>Expected clarification</dt><dd>{Encode(item.Case.ExpectedClarification ?? "No clarification needed")}</dd>
                     <dt>Expected reasoning</dt><dd>{Encode(item.Case.ExpectedReasoning)}</dd>
                     <dt>Service response</dt><dd>{Encode(item.Actual.Explanation)}</dd>
-                    <dt>Judge reasoning</dt><dd>{Encode(item.Judgment.Reason)}</dd>
+                    <dt>Score reasoning</dt><dd>{Encode(item.Judgment.ScoreReasoning)}</dd>
+                    <dt>Judge score</dt><dd>{item.Judgment.Score} / 2</dd>
+                    <dt>Invented facts reasoning</dt><dd>{Encode(item.Judgment.InventedFactsReasoning)}</dd>
+                    <dt>Has invented facts</dt><dd>{(item.Judgment.HasInventedFacts ? "Yes" : "No")}</dd>
                   </dl>
                 </details></td></tr>
                 """);
