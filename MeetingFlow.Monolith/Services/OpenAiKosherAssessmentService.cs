@@ -119,8 +119,7 @@ public sealed class OpenAiKosherAssessmentService(
 
         if (batch.Items.Any(item =>
                 !Enum.IsDefined(item.Status) ||
-                string.IsNullOrWhiteSpace(item.Explanation) ||
-                item.Explanation.Length > MaximumExplanationLength))
+                string.IsNullOrWhiteSpace(item.Explanation)))
         {
             throw new KosherAssessmentException("The AI response contained an invalid explanation.");
         }
@@ -128,7 +127,18 @@ public sealed class OpenAiKosherAssessmentService(
         var resultsById = batch.Items.ToDictionary(item => item.DishId, StringComparer.Ordinal);
         return new DishAssessmentBatch
         {
-            Items = dishes.Select(dish => resultsById[dish.Id]).ToList()
+            Items = dishes.Select(dish =>
+            {
+                var item = resultsById[dish.Id];
+                return new DishAssessmentItem
+                {
+                    DishId = item.DishId,
+                    Status = item.Status,
+                    Explanation = item.Explanation.Length <= MaximumExplanationLength
+                        ? item.Explanation
+                        : item.Explanation[..MaximumExplanationLength]
+                };
+            }).ToList()
         };
     }
 }
